@@ -15,7 +15,37 @@ train_df = pd.read_csv('training_set_VU_DM.csv', low_memory=False)
 # open test set
 test_df = pd.read_csv('test_set_VU_DM.csv', low_memory=False)
 
-def extract_hotel_performance(train_df, test_df):
+def extract_hotel_performance_train(train_df):    
+    '''
+    Function that extracts hotel performance features from training data based on prop_id.
+    To prevent data leakage, the 'current' row is left out
+
+    Params:
+    - train_df (pd.DataFrame): the training pandas dataframe
+    Returns:
+    - train_df (pd.DataFrame): the train dataframe with new features
+    '''
+
+    # Get global stats
+    total_bookings = train_df.groupby('prop_id')['booking_bool'].transform('sum')
+    total_position = train_df.groupby('prop_id')['position'].transform('sum')
+    total_clicks = train_df.groupby('prop_id')['click_bool'].transform('sum')
+    total_count = train_df.groupby('prop_id')['booking_bool'].transform('count')
+
+    # Compute features, leaving out current row
+    train_df['hotel_booking_rate'] = (total_bookings - train_df['booking_bool']) / (total_count - 1)
+    train_df['hotel_click_rate'] = (total_clicks - train_df['click_bool']) / (total_count - 1)
+    train_df['hotel_avg_position'] = (total_position - train_df['position']) / (total_count - 1)
+    train_df['hotel_n_appearances'] = total_count - 1
+
+    # Hotels appearing only once (= no history) get NaN; impute global mean instead
+    # NOTE: global mean seems biased?
+    global_booking_rate = train_df['booking_bool'].mean()
+    global_click_rate = train_df['click_bool'].mean()
+    train_df['hotel_booking_rate'] = train_df['hotel_booking_rate'].fillna(global_booking_rate)
+    train_df['hotel_click_rate'] = train_df['hotel_click_rate'].fillna(global_click_rate)
+
+def extract_hotel_performance_test(train_df, test_df):
     '''
     Function that extracts hotel performance features from training data
     to merge into test data based on prop_id.
@@ -64,6 +94,6 @@ def extract_hotel_performance(train_df, test_df):
     # Drop the  destination columns
     test_df = test_df.drop(columns=['dest_booking_rate', 'dest_click_rate'])
 
-    return test_df
+    # Merge new features into training df
 
-print(test_df.head(20))
+    return test_df, train_df
