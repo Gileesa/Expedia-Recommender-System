@@ -84,4 +84,5 @@ def print_outliers(col='price_usd'):
     print("Don't delete but create flag for model to know it was capped")
 
 # plot_histograms()
+# test
 print_outliers()
