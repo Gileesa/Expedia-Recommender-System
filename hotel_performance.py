@@ -1,6 +1,6 @@
 #
 # Code where we generate features for the hotel's performance
-# mostly based on data that is only available for the test set
+# mostly based on data that is only available for the training set
 #
 
 
