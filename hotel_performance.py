@@ -3,6 +3,8 @@
 # mostly based on data that is only available for the training set
 #
 
+# git pull origin gileesa2 --no-rebase
+
 
 # We are trying to predict booking_bool -> make sure no leakage!
 
