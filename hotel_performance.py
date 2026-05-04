@@ -19,38 +19,42 @@ train_df = pd.read_csv('training_set_VU_DM.csv', low_memory=False)
 test_df = pd.read_csv('test_set_VU_DM.csv', low_memory=False)
 
 def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:    
-    '''
+    """
     Function that adds features regarding hotel profiles to training data and a separate
     hotel_performance dataframe that can be merged into the test data.
 
-    ==== TRAINING DF =====
+    TRAINING DF
+    -----------
     Function that extracts hotel performance features from training data based on prop_id.
     To prevent data leakage, the 'current' row is left out (leave-one-out) for the training data).
 
-    ==== HOTEL_PERFORMANCE DF =====
+    HOTEL_PERFORMANCE DF
+    --------------------
     This function also builts a dataframe containing hotel profiles (hotel_performance), which can
     be merged into the test data (not in this function). This does not involve LOO
 
-    ==== BAYESIAN SMOOTHING ====
+    BAYESIAN SMOOTHING
+    ------------------
     Bayesian smoothing is a technique used to handle sparse data. Essentially,
     some statistics need to be smoothed because their case does not appear often
     enough in the data to be reliable, e.g. a hotel booked 2 out of 2 times looks
     perfect but is unreliable with only 2 observations.
 
     This function makes use of Bayesian smoothing in two ways:
+
     - Smoothing destination statistics towards the global stats (handles sparse destinations)
     - Smoothing hotel statistics towards the smoothed destination stats (handles sparse hotels)
 
     This creates a three-level hierarchy: global mean -> destination mean -> hotel rate,
     where each level is only trusted proportionally to how much data supports it.
-    ==========
 
-    Params:
-    - train_df (pd.DataFrame): the training pandas dataframe.
+    Args:
+        - train_df (pd.DataFrame): the training pandas dataframe.
+
     Returns:
-    - train_df (pd.DataFrame): the train dataframe with new features.
-    - hotel_performance (pd.DataFrame): the dataframe containing hotel profiles built from training data.
-    '''
+        - train_df (pd.DataFrame): the train dataframe with new features.
+        - hotel_performance (pd.DataFrame): the dataframe containing hotel profiles built from training data.
+    """
 
     # Get global stats
     global_position_avg = train_df['position'].mean()
