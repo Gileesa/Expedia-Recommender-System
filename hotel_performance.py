@@ -94,6 +94,7 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     # train_df should have these for training the ML
     # we apply leave-one-out
     # smoothing towards destination
+    # TODO: data leakage check
     train_df['hotel_booking_rate'] = ((total_bookings - train_df['booking_bool']) + C_bayesian * train_df['dest_booking_rate']) / (loo_count + C_bayesian)
     train_df['hotel_click_rate'] = ((total_clicks - train_df['click_bool']) + C_bayesian * train_df['dest_click_rate']) / (loo_count + C_bayesian)
     train_df['hotel_avg_position'] = ((total_position - train_df['position']) + C_bayesian *  global_position_avg)/ (C_bayesian + loo_count) # global avg because more accurate
@@ -172,6 +173,7 @@ def extract_hotel_performance_test(train_df: pd.DataFrame, test_df: pd.DataFrame
     train_df, hotel_performance = extract_hotel_performance_train(train_df)
 
     # Get destination mean
+    # TODO: smoothing this!
     dest_stats = train_df.groupby('srch_destination_id').agg(
         dest_booking_rate=('booking_bool', 'mean'),
         dest_click_rate=('click_bool', 'mean')
