@@ -62,6 +62,7 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     global_click_rate = train_df['click_bool'].mean()
 
     # Get destination stats
+    # LEAKAGE: every time we use destination average or whatever we need to EXCLUDE the current search id
     dest_stats = train_df.groupby('srch_destination_id').agg(
         dest_bookings=('booking_bool', 'sum'),  
         dest_clicks=('click_bool', 'sum'),      
@@ -85,6 +86,7 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     train_df = train_df.merge(dest_stats[cols], on='srch_destination_id', how='left')
 
     # Get hotel-wise stats
+    # LEAKAGE again; please remove current search id
     total_bookings: Series = train_df.groupby('prop_id')['booking_bool'].transform('sum')
     total_position: Series = train_df.groupby('prop_id')['position'].transform('sum')
     total_clicks: Series = train_df.groupby('prop_id')['click_bool'].transform('sum')
@@ -94,7 +96,7 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     # train_df should have these for training the ML
     # we apply leave-one-out
     # smoothing towards destination
-    # TODO: data leakage check
+    # TODO: data leakage check; remove current search ID
     train_df['hotel_booking_rate'] = ((total_bookings - train_df['booking_bool']) + C_bayesian * train_df['dest_booking_rate']) / (loo_count + C_bayesian)
     train_df['hotel_click_rate'] = ((total_clicks - train_df['click_bool']) + C_bayesian * train_df['dest_click_rate']) / (loo_count + C_bayesian)
     train_df['hotel_avg_position'] = ((total_position - train_df['position']) + C_bayesian *  global_position_avg)/ (C_bayesian + loo_count) # global avg because more accurate
@@ -103,8 +105,9 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     # drop unnecessary columns
     train_df = train_df.drop(columns=['dest_booking_rate', 'dest_click_rate'])
 
+    # ===== FOR THE TEST SET ==========
     # store per prop_id, i.e make profile per hotel
-    # we don't apply leave-one-out
+    # we don't apply leave-one-out; use full training data
     hotel_performance = train_df.groupby('prop_id').agg(
         total_bookings=('booking_bool', 'sum'),
         total_clicks=('click_bool', 'sum'),
