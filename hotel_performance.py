@@ -61,54 +61,170 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     global_booking_rate = train_df['booking_bool'].mean()
     global_click_rate = train_df['click_bool'].mean()
 
-    # Get destination stats
+    # Get global destination stats
     dest_stats = train_df.groupby('srch_destination_id').agg(
         dest_bookings=('booking_bool', 'sum'),  
         dest_clicks=('click_bool', 'sum'),      
         dest_count=('booking_bool', 'count')
     ).reset_index()
 
+    # Get destination stats for one search_id
+    dest_search = train_df.groupby(['srch_destination_id', 'srch_id']).agg(
+        search_dest_bookings=('booking_bool', 'sum'),
+        search_dest_clicks=('click_bool', 'sum'),
+        search_dest_count=('booking_bool', 'count')
+    ).reset_index()
+
+    # merge into training set
+    train_df = train_df.merge(
+        dest_search,
+        on=['srch_destination_id', 'srch_id'],
+        how='left'
+    )
+
+    # also merge total in training set
+    train_df = train_df.merge(
+        dest_stats,
+        on='srch_destination_id',
+        how='left'
+    )
+
+    # CALCULATE LOO STATS
+    # i.e leaving out current search id
+    loo_dest_bookings = (
+        train_df['dest_bookings'] # global
+        - train_df['search_dest_bookings'] # search_id
+    )
+
+    loo_dest_clicks = (
+        train_df['dest_clicks']
+        - train_df['search_dest_clicks']
+    )
+
+    loo_dest_count = (
+        train_df['dest_count']
+        - train_df['search_dest_count']
+    )
+
     # apply Bayesian smoothing to dest stats ( bayesian smoothing: https://en.wikipedia.org/wiki/Bayesian_average )
     # i.e a weighted mean (destination and global stats)
     C_bayesian = 30
 
-    dest_stats['dest_booking_rate'] = (
-    dest_stats['dest_bookings'] + C_bayesian * global_booking_rate
-    ) / (dest_stats['dest_count'] + C_bayesian)
+    train_df['dest_booking_rate'] = (
+        loo_dest_bookings + C_bayesian * global_booking_rate
+    ) / (loo_dest_count + C_bayesian)
 
-    dest_stats['dest_click_rate'] = (
-        dest_stats['dest_clicks'] + C_bayesian * global_click_rate
-    ) / (dest_stats['dest_count'] + C_bayesian)
+    train_df['dest_click_rate'] = (
+        loo_dest_clicks + C_bayesian * global_click_rate
+    ) / (loo_dest_count + C_bayesian)
 
     # merge into train data
-    cols = ['srch_destination_id', 'dest_booking_rate', 'dest_click_rate']
-    train_df = train_df.merge(dest_stats[cols], on='srch_destination_id', how='left')
+    # cols = ['srch_destination_id', 'dest_booking_rate', 'dest_click_rate']
+    # train_df = train_df.merge(dest_stats[cols], on='srch_destination_id', how='left')
 
     # Get hotel-wise stats
-    total_bookings: Series = train_df.groupby('prop_id')['booking_bool'].transform('sum')
-    total_position: Series = train_df.groupby('prop_id')['position'].transform('sum')
-    total_clicks: Series = train_df.groupby('prop_id')['click_bool'].transform('sum')
-    total_count: Series = train_df.groupby('prop_id')['booking_bool'].transform('count')
-    loo_count: Series = total_count - 1
+    # global
+    hotel_total = train_df.groupby('prop_id').agg(
+        hotel_bookings=('booking_bool', 'sum'),
+        hotel_clicks=('click_bool', 'sum'),
+        hotel_position=('position', 'sum'),
+        hotel_count=('booking_bool', 'count') # number of appearances
+    )
+
+    # per search id
+    hotel_search = train_df.groupby(['prop_id', 'srch_id']).agg(
+        search_hotel_bookings=('booking_bool', 'sum'),
+        search_hotel_clicks=('click_bool', 'sum'),
+        search_hotel_position=('position', 'sum'),
+        search_hotel_count=('booking_bool', 'count')
+    ).reset_index()
+
+    # merge into training df
+    train_df = train_df.merge(
+        hotel_search,
+        on=['prop_id', 'srch_id'],
+        how='left'
+    )
+
+    train_df = train_df.merge(
+        hotel_total,
+        on='prop_id',
+        how='left'
+    )
+
+    # apply LOO per search_id
+    loo_hotel_bookings = (
+        train_df['hotel_bookings']
+        - train_df['search_hotel_bookings']
+    )
+
+    loo_hotel_clicks = (
+        train_df['hotel_clicks']
+        - train_df['search_hotel_clicks']
+    )
+
+    loo_hotel_position = (
+        train_df['hotel_position']
+        - train_df['search_hotel_position']
+    )
+
+    loo_hotel_count = (
+        train_df['hotel_count']
+        - train_df['search_hotel_count']
+    )
 
     # train_df should have these for training the ML
     # we apply leave-one-out
     # smoothing towards destination
-    train_df['hotel_booking_rate'] = ((total_bookings - train_df['booking_bool']) + C_bayesian * train_df['dest_booking_rate']) / (loo_count + C_bayesian)
-    train_df['hotel_click_rate'] = ((total_clicks - train_df['click_bool']) + C_bayesian * train_df['dest_click_rate']) / (loo_count + C_bayesian)
-    train_df['hotel_avg_position'] = ((total_position - train_df['position']) + C_bayesian *  global_position_avg)/ (C_bayesian + loo_count) # global avg because more accurate
-    train_df['hotel_n_appearances'] = loo_count
+    train_df['hotel_booking_rate'] = (
+        loo_hotel_bookings
+        + C_bayesian * train_df['dest_booking_rate']
+    ) / (loo_hotel_count + C_bayesian)
+
+    train_df['hotel_click_rate'] = (
+        loo_hotel_clicks
+        + C_bayesian * train_df['dest_click_rate']
+    ) / (loo_hotel_count + C_bayesian)
+
+    train_df['hotel_avg_position'] = (
+        loo_hotel_position
+        + C_bayesian * global_position_avg
+    ) / (loo_hotel_count + C_bayesian)
+
+    train_df['hotel_n_appearances'] = loo_hotel_count
+
 
     # drop unnecessary columns
-    train_df = train_df.drop(columns=['dest_booking_rate', 'dest_click_rate'])
+    train_df = train_df.drop(columns=[
+        'dest_bookings',
+        'dest_clicks',
+        'dest_count',
 
+        'search_dest_bookings',
+        'search_dest_clicks',
+        'search_dest_count',
+    ])
+
+    train_df = train_df.drop(columns=[
+        'hotel_bookings',
+        'hotel_clicks',
+        'hotel_position',
+        'hotel_count',
+
+        'search_hotel_bookings',
+        'search_hotel_clicks',
+        'search_hotel_position',
+        'search_hotel_count'
+    ])
+
+    # ===== FOR THE TEST SET ==========
     # store per prop_id, i.e make profile per hotel
-    # we don't apply leave-one-out
+    # we don't apply leave-one-out; use full training data
     hotel_performance = train_df.groupby('prop_id').agg(
         total_bookings=('booking_bool', 'sum'),
         total_clicks=('click_bool', 'sum'),
         total_position=('position', 'sum'),
-        total_count=('booking_bool', 'count')
+        total_count=('booking_bool', 'count') # number of appearances
     ).reset_index()
 
     # Some hotels might have multiple destinations; take most frequent one
@@ -120,9 +236,23 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     hotel_performance = hotel_performance.merge(hotel_destination, on='prop_id', how='left')
 
     # Merge smoothed destination rates into hotel_performance
+    # non-LOO dest stats:
+    dest_performance = pd.DataFrame({
+        'srch_destination_id': dest_stats['srch_destination_id'],
+        'dest_booking_rate': (
+            dest_stats['dest_bookings'] + C_bayesian * global_booking_rate
+        ) / (dest_stats['dest_count'] + C_bayesian),
+
+        'dest_click_rate': (
+            dest_stats['dest_clicks'] + C_bayesian * global_click_rate
+        ) / (dest_stats['dest_count'] + C_bayesian)
+    })
+    
+    # merge:
     hotel_performance = hotel_performance.merge(
-        dest_stats[['srch_destination_id', 'dest_booking_rate', 'dest_click_rate']],
-        on='srch_destination_id', how='left'
+        dest_performance,
+        on='srch_destination_id',
+        how='left'
     )
 
     # Apply Bayesian smoothing using destination rate
@@ -149,7 +279,7 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
 
     # NOTE: bayesian smoothing: https://jedleee.medium.com/bayesian-laplace-smoothing-applications-in-modern-machine-learning-ef6c38153940 
 
-    return train_df, hotel_performance
+    return train_df, hotel_performance, dest_performance
 
 def extract_hotel_performance_test(train_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     '''
@@ -169,17 +299,19 @@ def extract_hotel_performance_test(train_df: pd.DataFrame, test_df: pd.DataFrame
 
     # extract features from training_df
     # this includes Bayesian smoothing
-    train_df, hotel_performance = extract_hotel_performance_train(train_df)
+    train_df, hotel_performance, dest_performance = extract_hotel_performance_train(train_df)
 
     # Get destination mean
+    # TODO: smoothing this!
     dest_stats = train_df.groupby('srch_destination_id').agg(
         dest_booking_rate=('booking_bool', 'mean'),
         dest_click_rate=('click_bool', 'mean')
     ).reset_index()
 
     # Merge into test set
+    # uses smoothed destinations !
     test_df = test_df.merge(hotel_performance, on='prop_id', how='left')
-    test_df = test_df.merge(dest_stats, on='srch_destination_id', how='left') # dropped later
+    test_df = test_df.merge(dest_performance, on='srch_destination_id', how='left') # dropped later
 
     # Replace NaN with destination mean, then global mean
     global_booking_rate = train_df['booking_bool'].mean()
@@ -197,10 +329,11 @@ def extract_hotel_performance_test(train_df: pd.DataFrame, test_df: pd.DataFrame
 
     # Drop the destination columns
     test_df = test_df.drop(columns=['dest_booking_rate', 'dest_click_rate'])
+    train_df = train_df.drop(columns=['dest_booking_rate', 'dest_click_rate'])
 
     # Merge new features into training df
 
-    return test_df, train_df
+    return train_df, test_df
 
 def validate_hotel_performance(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
     '''
@@ -257,7 +390,7 @@ def validate_hotel_performance(train_df: pd.DataFrame, test_df: pd.DataFrame) ->
     print("\n ✓ All validation checks passed!")
 
 
-test, train = extract_hotel_performance_test(train_df, test_df)
+train, test = extract_hotel_performance_test(train_df, test_df)
 
 print(test.head(20))
 validate_hotel_performance(train, test)
