@@ -13,10 +13,10 @@ from pandas import Series
 
 
 # Open training set
-train_df = pd.read_csv('training_set_VU_DM.csv', low_memory=False)
+# train_df = pd.read_csv('training_set_VU_DM.csv', low_memory=False)
 
-# open test set
-test_df = pd.read_csv('test_set_VU_DM.csv', low_memory=False)
+# # open test set
+# test_df = pd.read_csv('test_set_VU_DM.csv', low_memory=False)
 
 def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:    
     """
@@ -390,7 +390,7 @@ def validate_hotel_performance(train_df: pd.DataFrame, test_df: pd.DataFrame) ->
     print("\n ✓ All validation checks passed!")
 
 
-train, test = extract_hotel_performance_test(train_df, test_df)
+# train, test = extract_hotel_performance_test(train_df, test_df)
 
-print(test.head(20))
-validate_hotel_performance(train, test)
+# print(test.head(20))
+# validate_hotel_performance(train, test)
