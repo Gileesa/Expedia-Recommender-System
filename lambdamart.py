@@ -9,7 +9,7 @@ from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
 import matplotlib.pyplot as plt
 
-TESTING_MODE = True
+TESTING_MODE = False
 
 # Open training set
 if not TESTING_MODE:
@@ -25,6 +25,7 @@ train_df['position'] = pd.to_numeric(train_df['position'], errors='coerce')
 if not TESTING_MODE:
     test_df = pd.read_csv('test_set_VU_DM.csv', low_memory=False)
 else:
+    # Use only 10% of data while testing
     test_df = pd.read_csv('test_set_VU_DM.csv', low_memory=False, nrows=5000)
 
 # split data
@@ -183,3 +184,18 @@ importance.plot(kind='bar', figsize=(12, 5), title='Feature Importances')
 plt.tight_layout()
 plt.savefig('feature_importance.png')
 plt.show()
+
+
+# DEBUG
+print("=== prop_location_score2 ===")
+print(f"dtype: {train_df['prop_location_score2'].dtype}")
+print(f"null count: {train_df['prop_location_score2'].isna().sum()}")
+print(f"null %: {train_df['prop_location_score2'].isna().mean() * 100:.2f}%")
+print(f"\nValue stats:")
+print(train_df['prop_location_score2'].describe())
+print(f"\nSample of non-null values:")
+print(train_df['prop_location_score2'].dropna().head(20).tolist())
+print(f"\nAre there any 0 values?")
+print(f"Count of 0s: {(train_df['prop_location_score2'] == 0).sum()}")
+print(f"\nDistribution of nulls vs booking_bool:")
+print(train_df.groupby(train_df['prop_location_score2'].isna())['booking_bool'].mean())
