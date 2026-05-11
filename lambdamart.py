@@ -1,5 +1,6 @@
 #
-#
+# NOTE WE NEED hotel_performance.py AND other_features.py FOR THIS TO RUN !!!
+# USES xgboost NOT lightlbm SO THAT MIGHT CHANGE PERFORMANCE
 #
 
 import pandas as pd
@@ -7,7 +8,7 @@ from pandas import Series
 from xgboost import XGBRanker
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
-from other_features import add_search_relative_features
+from other_features import add_search_relative_features, add_basic_features, add_user_cluster_features_with_validation
 import matplotlib.pyplot as plt
 
 TESTING_MODE = False
@@ -68,10 +69,21 @@ _, valid_fold = extract_hotel_performance_test(
 _, test_fold = extract_hotel_performance_test(train_df, test_df)
 print(f"test_fold unique srch_ids after extract: {test_fold['srch_id'].nunique()}")
 
+# Add basic features
+train_fold = add_basic_features(train_fold)
+valid_fold = add_basic_features(valid_fold)
+test_fold = add_basic_features(test_fold)
+
 # ADD SEARCH RELATIVE FEATURES
 train_fold = add_search_relative_features(train_fold)
 valid_fold = add_search_relative_features(valid_fold)
 test_fold = add_search_relative_features(test_fold)
+
+# add cluster features
+train_fold, valid_fold, test_fold = add_user_cluster_features_with_validation(train_fold, valid_fold, test_fold)
+
+# DEBUG
+print('\n ===== DUPLICATIED COLUMNS in train fold: ', train_fold.columns.duplicated().sum())
 
 # add relevance
 train_fold['relevance'] = 0
@@ -136,6 +148,34 @@ features = [
     'prop_starrating_zscore',
     'prop_review_score_diff',
     'prop_review_score_zscore',
+
+    # add_basic_features
+    'search_month',
+    'search_day',
+    'search_hour',
+    'total_people',
+    'is_family',
+    'is_solo',
+    'is_couple',
+    'is_group',
+    'people_per_room',
+    'is_long_stay',
+    'is_last_minute',
+    'is_planned',
+    'log_booking_win',
+    'log_length_stay',
+    'has_hist_star',
+    'has_hist_price',
+    'is_high_end_user',
+    'star_pref_delta',
+    'price_pref_delta',
+    'same_country',
+    'log_price',
+    'quality_score',
+
+    # add_user_cluster_features
+    'cluster_0', 'cluster_1', 'cluster_2',
+    'cluster_3', 'cluster_4', 'cluster_5',
 ]
 
 train_fold = train_fold.sort_values('srch_id')
@@ -197,6 +237,13 @@ valid_fold['prediction'] = model.predict(X_valid)
 # predict on test
 X_test = test_fold[features]
 test_fold['prediction'] = model.predict(X_test)
+
+# DEBUG
+print('\n===== NANS IN X_.... =======')
+print(X_train.isna().sum().sum())
+print(X_valid.isna().sum().sum())
+print(X_test.isna().sum().sum())
+print('=' * 50)
 
 
 # submission to csv
