@@ -15,8 +15,6 @@ TESTING_MODE = False
 
 # DEBUG
 raw_test = pd.read_csv('test_set_VU_DM.csv', low_memory=False)
-print(f"Raw test unique srch_ids: {raw_test['srch_id'].nunique()}")
-print(f"Raw test shape: {raw_test.shape}")
 
 # Open training set
 if not TESTING_MODE:
@@ -35,9 +33,6 @@ else:
     # Use only 10% of data while testing
     test_df = pd.read_csv('test_set_VU_DM.csv', low_memory=False, nrows=5000)
 
-# DEBUG
-print(f"test_df unique srch_ids after loading: {test_df['srch_id'].nunique()}")
-
 # split data
 splitter = GroupShuffleSplit(
     test_size=0.2,
@@ -52,10 +47,6 @@ train_idx, valid_idx = next(
 train_part = train_df.iloc[train_idx]
 valid_part = train_df.iloc[valid_idx]
 
-# DEBUG
-print(train_part.columns.tolist())
-print('booking_bool' in train_part.columns)
-
 # feature engineer
 train_fold, _, _ = extract_hotel_performance_train(train_part)
 
@@ -67,7 +58,6 @@ _, valid_fold = extract_hotel_performance_test(
 
 # feature engineer test set
 _, test_fold = extract_hotel_performance_test(train_df, test_df)
-print(f"test_fold unique srch_ids after extract: {test_fold['srch_id'].nunique()}")
 
 # Add basic features
 train_fold = add_basic_features(train_fold)
@@ -81,9 +71,6 @@ test_fold = add_search_relative_features(test_fold)
 
 # add cluster features
 train_fold, valid_fold, test_fold = add_user_cluster_features_with_validation(train_fold, valid_fold, test_fold)
-
-# DEBUG
-print('\n ===== DUPLICATIED COLUMNS in train fold: ', train_fold.columns.duplicated().sum())
 
 # add relevance
 train_fold['relevance'] = 0
@@ -208,18 +195,6 @@ model = XGBRanker(
     random_state=42
 )
 
-# DEBUG
-print("===== STATS RIGHT BEFORE MODEL.FIT =====")
-print(f"TESTING_MODE: {TESTING_MODE}")
-print(f"train_df shape: {train_df.shape}")
-print(f"test_df shape: {test_df.shape}")
-
-print(f"X_train shape: {X_train.shape}")
-print(f"X_valid shape: {X_valid.shape}")
-print(f"y_train shape: {y_train.shape}")
-print(f"sum of train_group: {train_group.sum()}")
-print(f"sum of valid_group: {valid_group.sum()}")
-print('=' * 50)
 
 # fit model
 model.fit(
@@ -238,13 +213,6 @@ valid_fold['prediction'] = model.predict(X_valid)
 X_test = test_fold[features]
 test_fold['prediction'] = model.predict(X_test)
 
-# DEBUG
-print('\n===== NANS IN X_.... =======')
-print(X_train.isna().sum().sum())
-print(X_valid.isna().sum().sum())
-print(X_test.isna().sum().sum())
-print('=' * 50)
-
 
 # submission to csv
 submission = (
@@ -252,12 +220,6 @@ submission = (
     .sort_values(['srch_id', 'prediction'], ascending=[True, False])
     [['srch_id', 'prop_id']]
 )
-
-# DEBUG
-print(f"test_fold unique srch_ids: {test_fold['srch_id'].nunique()}")
-print(f"test_df unique srch_ids: {test_df['srch_id'].nunique()}")
-print(f"submission unique srch_ids: {submission['srch_id'].nunique()}")
-print(f"Are all test_fold srch_ids in test_df? {test_fold['srch_id'].isin(test_df['srch_id']).all()}")
 
 # save to csv
 submission.to_csv('submission/group154_submission1.csv', index=False)
@@ -305,23 +267,6 @@ print('\nnans in submission: ', submission.isna().sum())
 # how many unique searches?
 print(f"\nUnique searches in submission: {submission['srch_id'].nunique()}")
 print(f"Unique searches in test: {test_df['srch_id'].nunique()}")
-
-# DEBUG
-print("=== prop_location_score2 ===")
-print(f"dtype: {train_df['prop_location_score2'].dtype}")
-print(f"null count: {train_df['prop_location_score2'].isna().sum()}")
-print(f"null %: {train_df['prop_location_score2'].isna().mean() * 100:.2f}%")
-print(f"\nValue stats:")
-print(train_df['prop_location_score2'].describe())
-print(f"\nSample of non-null values:")
-print(train_df['prop_location_score2'].dropna().head(20).tolist())
-print(f"\nAre there any 0 values?")
-print(f"Count of 0s: {(train_df['prop_location_score2'] == 0).sum()}")
-print(f"\nDistribution of nulls vs booking_bool:")
-print(train_df.groupby(train_df['prop_location_score2'].isna())['booking_bool'].mean())
-
-# are there any NaNs in the submission?
-print(submission.isna().sum())
 
 # how many unique searches?
 print(f"Unique searches in submission: {submission['srch_id'].nunique()}")
