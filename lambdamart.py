@@ -11,6 +11,11 @@ import matplotlib.pyplot as plt
 
 TESTING_MODE = False
 
+# DEBUG
+raw_test = pd.read_csv('test_set_VU_DM.csv', low_memory=False)
+print(f"Raw test unique srch_ids: {raw_test['srch_id'].nunique()}")
+print(f"Raw test shape: {raw_test.shape}")
+
 # Open training set
 if not TESTING_MODE:
     train_df = pd.read_csv('training_set_VU_DM.csv', low_memory=False)
@@ -27,6 +32,9 @@ if not TESTING_MODE:
 else:
     # Use only 10% of data while testing
     test_df = pd.read_csv('test_set_VU_DM.csv', low_memory=False, nrows=5000)
+
+# DEBUG
+print(f"test_df unique srch_ids after loading: {test_df['srch_id'].nunique()}")
 
 # split data
 splitter = GroupShuffleSplit(
@@ -49,13 +57,15 @@ print('booking_bool' in train_part.columns)
 # feature engineer
 train_fold, _, _ = extract_hotel_performance_train(train_part)
 
-valid_fold, _ = extract_hotel_performance_test(
+_, valid_fold = extract_hotel_performance_test(
     train_part,
     valid_part
 )
 
+
 # feature engineer test set
-test_fold, _ = extract_hotel_performance_test(train_df, test_df)
+_, test_fold = extract_hotel_performance_test(train_df, test_df)
+print(f"test_fold unique srch_ids after extract: {test_fold['srch_id'].nunique()}")
 
 # add relevance
 train_fold['relevance'] = 0
@@ -155,12 +165,21 @@ valid_fold['prediction'] = model.predict(X_valid)
 X_test = test_fold[features]
 test_fold['prediction'] = model.predict(X_test)
 
+
 # submission to csv
 submission = (
     test_fold
     .sort_values(['srch_id', 'prediction'], ascending=[True, False])
     [['srch_id', 'prop_id']]
 )
+
+# DEBUG
+print(f"test_fold unique srch_ids: {test_fold['srch_id'].nunique()}")
+print(f"test_df unique srch_ids: {test_df['srch_id'].nunique()}")
+print(f"submission unique srch_ids: {submission['srch_id'].nunique()}")
+print(f"Are all test_fold srch_ids in test_df? {test_fold['srch_id'].isin(test_df['srch_id']).all()}")
+
+# save to csv
 submission.to_csv('submission/group154_submission1.csv', index=False)
 
 # validation to csv
@@ -186,6 +205,13 @@ plt.savefig('feature_importance.png')
 plt.show()
 
 
+# are there any NaNs in the submission?
+print('\nnans in submission: ', submission.isna().sum())
+
+# how many unique searches?
+print(f"\nUnique searches in submission: {submission['srch_id'].nunique()}")
+print(f"Unique searches in test: {test_df['srch_id'].nunique()}")
+
 # DEBUG
 print("=== prop_location_score2 ===")
 print(f"dtype: {train_df['prop_location_score2'].dtype}")
@@ -199,3 +225,10 @@ print(f"\nAre there any 0 values?")
 print(f"Count of 0s: {(train_df['prop_location_score2'] == 0).sum()}")
 print(f"\nDistribution of nulls vs booking_bool:")
 print(train_df.groupby(train_df['prop_location_score2'].isna())['booking_bool'].mean())
+
+# are there any NaNs in the submission?
+print(submission.isna().sum())
+
+# how many unique searches?
+print(f"Unique searches in submission: {submission['srch_id'].nunique()}")
+print(f"Unique searches in test: {test_df['srch_id'].nunique()}")
