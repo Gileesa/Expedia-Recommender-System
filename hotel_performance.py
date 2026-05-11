@@ -56,21 +56,10 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
         - hotel_performance (pd.DataFrame): the dataframe containing hotel profiles built from training data.
     """
 
-    print(f"\n{'='*50}")
-    print(f"INPUT: train_df shape: {train_df.shape}")
-    print(f"INPUT: unique prop_ids: {train_df['prop_id'].nunique()}")
-    print(f"INPUT: unique srch_ids: {train_df['srch_id'].nunique()}")
-    print(f"INPUT: unique destinations: {train_df['srch_destination_id'].nunique()}")
-
     # Get global stats
     global_position_avg = train_df['position'].mean()
     global_booking_rate = train_df['booking_bool'].mean()
     global_click_rate = train_df['click_bool'].mean()
-
-    print(f"\nGLOBAL STATS:")
-    print(f"  global_booking_rate: {global_booking_rate:.4f}")
-    print(f"  global_click_rate: {global_click_rate:.4f}")
-    print(f"  global_position_avg: {global_position_avg:.4f}")
 
     # Get global destination stats
     dest_stats = train_df.groupby('srch_destination_id').agg(
@@ -79,20 +68,12 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
         dest_count=('booking_bool', 'count')
     ).reset_index()
 
-    print(f"\nDEST_STATS:")
-    print(f"  shape: {dest_stats.shape}")
-    print(f"  duplicate destinations: {dest_stats['srch_destination_id'].duplicated().sum()}")
-
     # Get destination stats for one search_id
     dest_search = train_df.groupby(['srch_destination_id', 'srch_id']).agg(
         search_dest_bookings=('booking_bool', 'sum'),
         search_dest_clicks=('click_bool', 'sum'),
         search_dest_count=('booking_bool', 'count')
     ).reset_index()
-
-    print(f"\nDEST_SEARCH:")
-    print(f"  shape: {dest_search.shape}")
-    print(f"  duplicate (dest, srch) pairs: {dest_search.duplicated(subset=['srch_destination_id', 'srch_id']).sum()}")
 
     # merge into training set
     rows_before = len(train_df)
@@ -101,8 +82,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
         on=['srch_destination_id', 'srch_id'],
         how='left'
     )
-    print(f"\nAFTER MERGE dest_search: {rows_before} -> {len(train_df)} rows (diff: {len(train_df) - rows_before})")
-    print(f"  NaNs in search_dest_bookings: {train_df['search_dest_bookings'].isna().sum()}")
 
     # also merge total in training set
     rows_before = len(train_df)
@@ -111,8 +90,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
         on='srch_destination_id',
         how='left'
     )
-    print(f"AFTER MERGE dest_stats: {rows_before} -> {len(train_df)} rows (diff: {len(train_df) - rows_before})")
-    print(f"  NaNs in dest_bookings: {train_df['dest_bookings'].isna().sum()}")
 
     # CALCULATE LOO STATS
     # i.e leaving out current search id
@@ -131,10 +108,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
         - train_df['search_dest_count']
     )
 
-    print(f"\nLOO DEST STATS:")
-    print(f"  negative loo_dest_count: {(loo_dest_count < 0).sum()}")
-    print(f"  zero loo_dest_count: {(loo_dest_count == 0).sum()}")
-
     # apply Bayesian smoothing to dest stats ( bayesian smoothing: https://en.wikipedia.org/wiki/Bayesian_average )
     # i.e a weighted mean (destination and global stats)
     C_bayesian = 30
@@ -146,10 +119,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     train_df['dest_click_rate'] = (
         loo_dest_clicks + C_bayesian * global_click_rate
     ) / (loo_dest_count + C_bayesian)
-
-    print(f"\nDEST RATES:")
-    print(f"  dest_booking_rate NaNs: {train_df['dest_booking_rate'].isna().sum()}")
-    print(f"  dest_booking_rate range: [{train_df['dest_booking_rate'].min():.4f}, {train_df['dest_booking_rate'].max():.4f}]")
 
     # merge into train data
     # cols = ['srch_destination_id', 'dest_booking_rate', 'dest_click_rate']
@@ -172,10 +141,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
         search_hotel_count=('booking_bool', 'count')
     ).reset_index()
 
-    print(f"\nHOTEL_SEARCH:")
-    print(f"  shape: {hotel_search.shape}")
-    print(f"  duplicate (prop, srch) pairs: {hotel_search.duplicated(subset=['prop_id', 'srch_id']).sum()}")
-
     # merge into training df
     rows_before = len(train_df)
     train_df = train_df.merge(
@@ -183,8 +148,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
         on=['prop_id', 'srch_id'],
         how='left'
     )
-    print(f"\nAFTER MERGE hotel_search: {rows_before} -> {len(train_df)} rows (diff: {len(train_df) - rows_before})")
-    print(f"  NaNs in search_hotel_bookings: {train_df['search_hotel_bookings'].isna().sum()}")
 
     rows_before = len(train_df)
     train_df = train_df.merge(
@@ -192,8 +155,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
         on='prop_id',
         how='left'
     )
-    print(f"AFTER MERGE hotel_total: {rows_before} -> {len(train_df)} rows (diff: {len(train_df) - rows_before})")
-    print(f"  NaNs in hotel_bookings: {train_df['hotel_bookings'].isna().sum()}")
 
     # apply LOO per search_id
     loo_hotel_bookings = (
@@ -216,11 +177,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
         - train_df['search_hotel_count']
     )
 
-    print(f"\nLOO HOTEL STATS:")
-    print(f"  negative loo_hotel_count: {(loo_hotel_count < 0).sum()}")
-    print(f"  zero loo_hotel_count: {(loo_hotel_count == 0).sum()}")
-    print(f"  NaN loo_hotel_count: {loo_hotel_count.isna().sum()}")
-
     # train_df should have these for training the ML
     # we apply leave-one-out
     # smoothing towards destination
@@ -240,15 +196,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     ) / (loo_hotel_count + C_bayesian)
 
     train_df['hotel_n_appearances'] = loo_hotel_count
-
-    print(f"\nFINAL HOTEL FEATURES:")
-    print(f"  hotel_booking_rate NaNs: {train_df['hotel_booking_rate'].isna().sum()}")
-    print(f"  hotel_booking_rate range: [{train_df['hotel_booking_rate'].min():.4f}, {train_df['hotel_booking_rate'].max():.4f}]")
-    print(f"  hotel_click_rate NaNs: {train_df['hotel_click_rate'].isna().sum()}")
-    print(f"  hotel_n_appearances NaNs: {train_df['hotel_n_appearances'].isna().sum()}")
-    print(f"  hotel_n_appearances range: [{train_df['hotel_n_appearances'].min():.0f}, {train_df['hotel_n_appearances'].max():.0f}]")
-    print(f"  train_df shape after all merges: {train_df.shape}")
-
 
     # drop unnecessary columns
     train_df = train_df.drop(columns=[
@@ -353,26 +300,9 @@ def extract_hotel_performance_test(train_df: pd.DataFrame, test_df: pd.DataFrame
     - test_df (pd.DataFrame): the test dataframe with new features
     '''
 
-    print(f"\n{'='*50}")
-    print(f"TEST INPUT: test_df shape: {test_df.shape}")
-    print(f"TEST INPUT: unique srch_ids in test: {test_df['srch_id'].nunique()}")
-
     # extract features from training_df
     # this includes Bayesian smoothing
     train_df, hotel_performance, dest_performance = extract_hotel_performance_train(train_df)
-    print("=======HOTEL PERFORMANCE COLUMNS======")
-    print(hotel_performance.columns.tolist())
-    print(hotel_performance.shape)
-    print("=" * 50)
-
-    print(f"\nHOTEL_PERFORMANCE:")
-    print(f"  shape: {hotel_performance.shape}")
-    print(f"  duplicate prop_ids: {hotel_performance['prop_id'].duplicated().sum()}")
-    print(f"  NaNs: {hotel_performance.isna().sum().sum()}")
-
-    print(f"\nDEST_PERFORMANCE:")
-    print(f"  shape: {dest_performance.shape}")
-    print(f"  duplicate destinations: {dest_performance['srch_destination_id'].duplicated().sum()}")
 
     # Get destination mean
     # TODO: smoothing this!
@@ -382,15 +312,9 @@ def extract_hotel_performance_test(train_df: pd.DataFrame, test_df: pd.DataFrame
     ).reset_index()
 
     # Merge into test set
-    # uses smoothed destinations !
-    rows_before = len(test_df)
     test_df = test_df.merge(hotel_performance, on='prop_id', how='left')
-    print(f"\nAFTER MERGE hotel_performance into test: {rows_before} -> {len(test_df)} rows (diff: {len(test_df) - rows_before})")
-    print(f"  new hotels (NaN hotel_booking_rate): {test_df['hotel_booking_rate'].isna().sum()}")
 
-    rows_before = len(test_df)
     test_df = test_df.merge(dest_performance, on='srch_destination_id', how='left') # dropped later
-    print(f"AFTER MERGE dest_performance into test: {rows_before} -> {len(test_df)} rows (diff: {len(test_df) - rows_before})")
 
     # Replace NaN with destination mean, then global mean
     global_booking_rate = train_df['booking_bool'].mean()
@@ -411,9 +335,6 @@ def extract_hotel_performance_test(train_df: pd.DataFrame, test_df: pd.DataFrame
     train_df = train_df.drop(columns=['dest_booking_rate', 'dest_click_rate'])
 
     # Merge new features into training df
-
-    print(f"\nFINAL TEST SHAPE: {test_df.shape}")
-    print(f"FINAL TEST unique srch_ids: {test_df['srch_id'].nunique()}")
 
     return train_df, test_df
 
