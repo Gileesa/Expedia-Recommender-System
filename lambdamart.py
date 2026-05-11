@@ -7,6 +7,7 @@ from pandas import Series
 from xgboost import XGBRanker
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
+from other_features import add_search_relative_features
 import matplotlib.pyplot as plt
 
 TESTING_MODE = False
@@ -67,6 +68,11 @@ _, valid_fold = extract_hotel_performance_test(
 _, test_fold = extract_hotel_performance_test(train_df, test_df)
 print(f"test_fold unique srch_ids after extract: {test_fold['srch_id'].nunique()}")
 
+# ADD SEARCH RELATIVE FEATURES
+train_fold = add_search_relative_features(train_fold)
+valid_fold = add_search_relative_features(valid_fold)
+test_fold = add_search_relative_features(test_fold)
+
 # add relevance
 train_fold['relevance'] = 0
 train_fold.loc[train_fold['click_bool'] == 1, 'relevance'] = 1
@@ -116,6 +122,20 @@ features = [
     # competitor data
     'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
     'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
+
+    # for debiasing
+    'random_bool',
+
+    # search-relative; note no log_position !
+    'price_pct_rank',
+    'price_usd_diff',
+    'price_usd_zscore',
+    'price_per_night',
+    'price_per_person',
+    'prop_starrating_diff',
+    'prop_starrating_zscore',
+    'prop_review_score_diff',
+    'prop_review_score_zscore',
 ]
 
 train_fold = train_fold.sort_values('srch_id')
@@ -139,7 +159,7 @@ model = XGBRanker(
 
     learning_rate=0.05,
     max_depth=6,
-    n_estimators=300,
+    n_estimators=500,
 
     subsample=0.8,
     colsample_bytree=0.8,
@@ -147,6 +167,19 @@ model = XGBRanker(
     early_stopping_rounds=50,
     random_state=42
 )
+
+# DEBUG
+print("===== STATS RIGHT BEFORE MODEL.FIT =====")
+print(f"TESTING_MODE: {TESTING_MODE}")
+print(f"train_df shape: {train_df.shape}")
+print(f"test_df shape: {test_df.shape}")
+
+print(f"X_train shape: {X_train.shape}")
+print(f"X_valid shape: {X_valid.shape}")
+print(f"y_train shape: {y_train.shape}")
+print(f"sum of train_group: {train_group.sum()}")
+print(f"sum of valid_group: {valid_group.sum()}")
+print('=' * 50)
 
 # fit model
 model.fit(
@@ -201,7 +234,21 @@ print(importance)
 
 importance.plot(kind='bar', figsize=(12, 5), title='Feature Importances')
 plt.tight_layout()
-plt.savefig('feature_importance.png')
+plt.savefig('figures/feature_importance.png')
+plt.show()
+
+# plot training curve
+results = model.evals_result()
+ndcg_scores = results['validation_0']['ndcg@5']
+
+plt.figure(figsize=(10, 5))
+plt.plot(ndcg_scores, label='validation NDCG@5')
+plt.xlabel('Tree number')
+plt.ylabel('NDCG@5')
+plt.title('Training curve')
+plt.legend()
+plt.grid(alpha=0.3)
+plt.savefig('figures/training_curve.png')
 plt.show()
 
 
