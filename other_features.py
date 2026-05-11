@@ -179,6 +179,8 @@ def only_train_test_add_user_cluster_features(
     """
     K-Means user segmentation on search-level features.
     Fit on combined train+test so test users get proper assignments.
+
+    Creating clusters based partly on test set seems like it might cause a leakage problem
     """
     train = train.copy()
     test  = test.copy()

@@ -8,7 +8,7 @@ from pandas import Series
 # from xgboost import XGBRanker
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
-from other_features import add_search_relative_features, add_basic_features, add_user_cluster_features_with_validation
+from other_features import add_search_relative_features, add_basic_features, only_train_test_add_user_cluster_features
 import matplotlib.pyplot as plt
 import lightgbm as lgb
 
@@ -30,6 +30,9 @@ train_full = add_search_relative_features(train_full)
 _, test_fold = extract_hotel_performance_test(train_df, test_df)
 test_fold = add_basic_features(test_fold)
 test_fold = add_search_relative_features(test_fold)
+
+# add cluster features; probably contains leakage so not actually used currently
+train_full, test_fold = only_train_test_add_user_cluster_features(train_full, test_fold)
 
 # adding relevance
 train_full['relevance'] = 0
