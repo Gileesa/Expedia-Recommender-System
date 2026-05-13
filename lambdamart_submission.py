@@ -8,6 +8,7 @@ from pandas import Series
 # from xgboost import XGBRanker
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
+from collaborativefiltering import run_svd_pipeline
 from other_features import add_search_relative_features, add_basic_features, only_train_test_add_user_cluster_features
 import matplotlib.pyplot as plt
 import lightgbm as lgb
@@ -33,6 +34,9 @@ test_fold = add_search_relative_features(test_fold)
 
 # add cluster features; probably contains leakage so not actually used currently
 train_full, test_fold = only_train_test_add_user_cluster_features(train_full, test_fold)
+
+#collaborative filtering
+train_full, test_fold = run_svd_pipeline(train_full, test_fold, 20)
 
 # adding relevance
 train_full['relevance'] = 0
@@ -127,6 +131,13 @@ features = [
     # add_user_cluster_features
     # 'cluster_0', 'cluster_1', 'cluster_2',
     # 'cluster_3', 'cluster_4', 'cluster_5',
+
+    'svd_feature_0', 'svd_feature_1', 'svd_feature_2', 'svd_feature_3',
+    'svd_feature_4', 'svd_feature_5', 'svd_feature_6',
+    'svd_feature_7', 'svd_feature_8', 'svd_feature_9', 'svd_feature_10',
+    'svd_feature_11', 'svd_feature_12', 'svd_feature_13', 'svd_feature_14',
+    'svd_feature_15', 'svd_feature_16', 'svd_feature_17', 'svd_feature_18',
+    'svd_feature_19'
 ]
 
 
@@ -173,4 +184,4 @@ print(f"NaNs in submission: {submission.isna().sum().sum()}")
 print(submission.head(10))
 
 # save to csv
-submission.to_csv('submission/group154_submission5.csv', index=False)
+submission.to_csv('submission/group154_submission6.csv', index=False)
