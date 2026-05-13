@@ -129,6 +129,7 @@ features = [
     # 'cluster_3', 'cluster_4', 'cluster_5',
 ]
 
+
 X_train_full = train_full[features]
 y_train_full = train_full['relevance']
 
@@ -172,4 +173,4 @@ print(f"NaNs in submission: {submission.isna().sum().sum()}")
 print(submission.head(10))
 
 # save to csv
-submission.to_csv('submission/group154_submission3.csv', index=False)
+submission.to_csv('submission/group154_submission5.csv', index=False)
