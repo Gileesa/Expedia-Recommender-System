@@ -83,8 +83,8 @@ features = [
     'orig_destination_distance',
 
     # competitor data
-    # 'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
-    # 'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
+    'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
+    'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
 
     # for debiasing
     'random_bool',
@@ -102,22 +102,22 @@ features = [
 
     # add_basic_features
     'search_month',
-    # 'search_day',
+    'search_day',
     'search_hour',
     'total_people',
-    # 'is_family',
-    # 'is_solo',
-    # 'is_couple',
-    # 'is_group',
+    'is_family',
+    'is_solo',
+    'is_couple',
+    'is_group',
     'people_per_room',
-    # 'is_long_stay',
-    # 'is_last_minute',
-    # 'is_planned',
+    'is_long_stay',
+    'is_last_minute',
+    'is_planned',
     'log_booking_win',
     'log_length_stay',
     # 'has_hist_star',
     # 'has_hist_price',
-    # 'is_high_end_user',
+    'is_high_end_user',
     'star_pref_delta',
     'price_pref_delta',
     'same_country',
@@ -129,6 +129,7 @@ features = [
     # 'cluster_3', 'cluster_4', 'cluster_5',
 ]
 
+
 X_train_full = train_full[features]
 y_train_full = train_full['relevance']
 
@@ -137,15 +138,13 @@ model_final = lgb.LGBMRanker(
     objective='lambdarank',
     metric='ndcg',
     ndcg_eval_at=[5],
-    learning_rate=0.02,
-    max_depth=-1,        # no limit
-    num_leaves=127,       # more = more complex model
-    n_estimators=1000,  # added more
+    learning_rate=0.05,
+    max_depth=6,
+    n_estimators=500,
     subsample=0.8,
     colsample_bytree=0.8,
-    min_child_samples=20,
-    random_state=42,
-    verbose=100
+    # early_stopping_rounds=50,
+    random_state=42
 )
 
 model_final.fit(
