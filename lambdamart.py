@@ -1,6 +1,6 @@
 #
 # NOTE WE NEED hotel_performance.py AND other_features.py FOR THIS TO RUN !!!
-# USES xgboost NOT lightlbm SO THAT MIGHT CHANGE PERFORMANCE
+# USES lightlbm 
 #
 
 import pandas as pd
@@ -10,6 +10,7 @@ from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
 from other_features import add_search_relative_features, add_basic_features, add_user_cluster_features_with_validation
 import matplotlib.pyplot as plt
+import lightgbm as lgb
 
 TESTING_MODE = False
 
@@ -119,8 +120,8 @@ features = [
     'orig_destination_distance',
 
     # competitor data
-    'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
-    'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
+    # 'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
+    # 'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
 
     # for debiasing
     'random_bool',
@@ -138,22 +139,22 @@ features = [
 
     # add_basic_features
     'search_month',
-    'search_day',
+    # 'search_day',
     'search_hour',
     'total_people',
-    'is_family',
-    'is_solo',
-    'is_couple',
-    'is_group',
+    # 'is_family',
+    # 'is_solo',
+    # 'is_couple',
+    # 'is_group',
     'people_per_room',
-    'is_long_stay',
-    'is_last_minute',
-    'is_planned',
+    # 'is_long_stay',
+    # 'is_last_minute',
+    # 'is_planned',
     'log_booking_win',
     'log_length_stay',
-    'has_hist_star',
-    'has_hist_price',
-    'is_high_end_user',
+    # 'has_hist_star',
+    # 'has_hist_price',
+    # 'is_high_end_user',
     'star_pref_delta',
     'price_pref_delta',
     'same_country',
@@ -161,8 +162,8 @@ features = [
     'quality_score',
 
     # add_user_cluster_features
-    'cluster_0', 'cluster_1', 'cluster_2',
-    'cluster_3', 'cluster_4', 'cluster_5',
+    # 'cluster_0', 'cluster_1', 'cluster_2',
+    # 'cluster_3', 'cluster_4', 'cluster_5',
 ]
 
 train_fold = train_fold.sort_values('srch_id')
@@ -180,19 +181,18 @@ X_valid = valid_fold[features]
 y_valid = valid_fold['relevance']
 
 # training the lambda
-model = XGBRanker(
-    objective='rank:ndcg',
-    eval_metric='ndcg@5',
-
-    learning_rate=0.05,
-    max_depth=6,
-    n_estimators=500,
-
+model = lgb.LGBMRanker(
+    objective='lambdarank',
+    metric='ndcg',
+    ndcg_eval_at=[5],
+    learning_rate=0.02,
+    max_depth=-1,        # no limit
+    num_leaves=127,       # more = more complex model
+    n_estimators=1000,  # added more
     subsample=0.8,
     colsample_bytree=0.8,
-
-    early_stopping_rounds=50,
-    random_state=42
+    min_child_samples=20,
+    random_state=42,
 )
 
 
@@ -203,7 +203,10 @@ model.fit(
     group=train_group,
     eval_set=[(X_valid, y_valid)],
     eval_group=[valid_group],
-    verbose=True,
+        callbacks=[
+        lgb.log_evaluation(period=100), 
+        lgb.early_stopping(stopping_rounds=50)
+    ]
 )
 
 # get validation prediction
@@ -247,8 +250,8 @@ plt.savefig('figures/feature_importance.png')
 plt.show()
 
 # plot training curve
-results = model.evals_result()
-ndcg_scores = results['validation_0']['ndcg@5']
+results = model.evals_result_
+ndcg_scores = results['valid_0']['ndcg@5']
 
 plt.figure(figsize=(10, 5))
 plt.plot(ndcg_scores, label='validation NDCG@5')
