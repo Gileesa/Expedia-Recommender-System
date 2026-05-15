@@ -79,7 +79,7 @@ train_fold, valid_fold, test_fold = add_user_cluster_features_with_validation(tr
 
 # collaborative filtering
 # train_fold, test_fold = run_svd_pipeline(train_fold, test_fold, 20)
-# _, valid_fold = run_svd_pipeline(train_fold, valid_fold, 20)
+# _, valid_fold = run_svd_pipeline(train_fold, valid_fold, 20, validation=True)
 
 # add relevance
 train_fold['relevance'] = 0
@@ -99,6 +99,8 @@ features = [
     'prop_review_score',
     'prop_location_score1',
     'prop_location_score2',
+
+    # HOTEL PERFORMANCE
     'hotel_booking_rate',
     'hotel_click_rate',
     'hotel_avg_position',
@@ -128,8 +130,8 @@ features = [
     'orig_destination_distance',
 
     # competitor data
-    # 'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
-    # 'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
+    'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
+    'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
 
     # for debiasing
     'random_bool',
@@ -147,22 +149,22 @@ features = [
 
     # add_basic_features
     'search_month',
-    # 'search_day',
+    'search_day',
     'search_hour',
     'total_people',
-    # 'is_family',
-    # 'is_solo',
-    # 'is_couple',
-    # 'is_group',
+    'is_family',
+    'is_solo',
+    'is_couple',
+    'is_group',
     'people_per_room',
-    # 'is_long_stay',
-    # 'is_last_minute',
-    # 'is_planned',
+    'is_long_stay',
+    'is_last_minute',
+    'is_planned',
     'log_booking_win',
     'log_length_stay',
     # 'has_hist_star',
     # 'has_hist_price',
-    # 'is_high_end_user',
+    'is_high_end_user',
     'star_pref_delta',
     'price_pref_delta',
     'same_country',
@@ -172,6 +174,13 @@ features = [
     # add_user_cluster_features
     # 'cluster_0', 'cluster_1', 'cluster_2',
     # 'cluster_3', 'cluster_4', 'cluster_5',
+
+    # 'svd_feature_0', 'svd_feature_1', 'svd_feature_2', 'svd_feature_3',
+    # 'svd_feature_4', 'svd_feature_5', 'svd_feature_6',
+    # 'svd_feature_7', 'svd_feature_8', 'svd_feature_9', 'svd_feature_10',
+    # 'svd_feature_11', 'svd_feature_12', 'svd_feature_13', 'svd_feature_14',
+    # 'svd_feature_15', 'svd_feature_16', 'svd_feature_17', 'svd_feature_18',
+    # 'svd_feature_19'
 ]
 
 train_fold = train_fold.sort_values('srch_id')
