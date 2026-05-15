@@ -9,7 +9,7 @@ from pandas import Series
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
 from collaborativefiltering import run_svd_pipeline
-from other_features import add_search_relative_features, add_basic_features, only_train_test_add_user_cluster_features
+from other_features import add_search_relative_features, add_basic_features, only_train_test_add_user_cluster_features, cap_price_usd
 import matplotlib.pyplot as plt
 import lightgbm as lgb
 
@@ -24,19 +24,24 @@ train_df['position'] = pd.to_numeric(train_df['position'], errors='coerce')
 
 # train on full training data
 train_full, _, _ = extract_hotel_performance_train(train_df)
+# train_full = train_df
 train_full = add_basic_features(train_full)
 train_full = add_search_relative_features(train_full)
 
 # feature engineer test set
 _, test_fold = extract_hotel_performance_test(train_df, test_df)
+# test_fold = test_df
 test_fold = add_basic_features(test_fold)
 test_fold = add_search_relative_features(test_fold)
+
+# cap price
+train_full, test_fold = cap_price_usd(train_full, test_fold)
 
 # add cluster features; probably contains leakage so not actually used currently
 train_full, test_fold = only_train_test_add_user_cluster_features(train_full, test_fold)
 
 # collaborative filtering
-train_full, test_fold = run_svd_pipeline(train_full, test_fold, 20)
+# train_full, test_fold = run_svd_pipeline(train_full, test_fold, 20)
 
 # adding relevance
 train_full['relevance'] = 0
@@ -58,6 +63,8 @@ features = [
     'prop_review_score',
     'prop_location_score1',
     'prop_location_score2',
+
+    # HOTEL PERFORMANCE
     'hotel_booking_rate',
     'hotel_click_rate',
     'hotel_avg_position',
@@ -132,12 +139,12 @@ features = [
     # 'cluster_0', 'cluster_1', 'cluster_2',
     # 'cluster_3', 'cluster_4', 'cluster_5',
 
-    'svd_feature_0', 'svd_feature_1', 'svd_feature_2', 'svd_feature_3',
-    'svd_feature_4', 'svd_feature_5', 'svd_feature_6',
-    'svd_feature_7', 'svd_feature_8', 'svd_feature_9', 'svd_feature_10',
-    'svd_feature_11', 'svd_feature_12', 'svd_feature_13', 'svd_feature_14',
-    'svd_feature_15', 'svd_feature_16', 'svd_feature_17', 'svd_feature_18',
-    'svd_feature_19'
+    # 'svd_feature_0', 'svd_feature_1', 'svd_feature_2', 'svd_feature_3',
+    # 'svd_feature_4', 'svd_feature_5', 'svd_feature_6',
+    # 'svd_feature_7', 'svd_feature_8', 'svd_feature_9', 'svd_feature_10',
+    # 'svd_feature_11', 'svd_feature_12', 'svd_feature_13', 'svd_feature_14',
+    # 'svd_feature_15', 'svd_feature_16', 'svd_feature_17', 'svd_feature_18',
+    # 'svd_feature_19'
 ]
 
 
@@ -184,4 +191,4 @@ print(f"NaNs in submission: {submission.isna().sum().sum()}")
 print(submission.head(10))
 
 # save to csv
-submission.to_csv('submission/group154_submission6.csv', index=False)
+submission.to_csv('submission/group154_submission8.csv', index=False)
