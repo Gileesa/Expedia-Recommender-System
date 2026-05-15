@@ -8,7 +8,8 @@ from pandas import Series
 from xgboost import XGBRanker
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
-from other_features import add_search_relative_features, add_basic_features, add_user_cluster_features_with_validation
+from other_features import add_search_relative_features, add_basic_features, add_user_cluster_features_with_validation, cap_price_usd
+from collaborativefiltering import run_svd_pipeline
 import matplotlib.pyplot as plt
 import lightgbm as lgb
 
@@ -60,6 +61,9 @@ _, valid_fold = extract_hotel_performance_test(
 # feature engineer test set
 _, test_fold = extract_hotel_performance_test(train_df, test_df)
 
+train_fold, test_fold = cap_price_usd(train_fold, test_fold)
+_, valid_fold = cap_price_usd(train_fold, valid_fold)
+
 # Add basic features
 train_fold = add_basic_features(train_fold)
 valid_fold = add_basic_features(valid_fold)
@@ -72,6 +76,10 @@ test_fold = add_search_relative_features(test_fold)
 
 # add cluster features
 train_fold, valid_fold, test_fold = add_user_cluster_features_with_validation(train_fold, valid_fold, test_fold)
+
+# collaborative filtering
+# train_fold, test_fold = run_svd_pipeline(train_fold, test_fold, 20)
+# _, valid_fold = run_svd_pipeline(train_fold, valid_fold, 20)
 
 # add relevance
 train_fold['relevance'] = 0
@@ -225,7 +233,7 @@ submission = (
 )
 
 # save to csv
-submission.to_csv('submission/group154_submission1.csv', index=False)
+submission.to_csv('submission/fake-group154_submission1.csv', index=False)
 
 # validation to csv
 validation = (
@@ -233,7 +241,7 @@ validation = (
     .sort_values(['srch_id', 'prediction'], ascending=[True, False])
     [['srch_id', 'prop_id']]
 )
-validation.to_csv('submission/group154_validation1.csv', index=False)
+validation.to_csv('submission/group154_validation2.csv', index=False)
 
 
 # check features

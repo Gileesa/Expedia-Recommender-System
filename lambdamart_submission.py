@@ -35,7 +35,7 @@ test_fold = add_search_relative_features(test_fold)
 # add cluster features; probably contains leakage so not actually used currently
 train_full, test_fold = only_train_test_add_user_cluster_features(train_full, test_fold)
 
-#collaborative filtering
+# collaborative filtering
 train_full, test_fold = run_svd_pipeline(train_full, test_fold, 20)
 
 # adding relevance

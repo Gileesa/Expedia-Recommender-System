@@ -305,3 +305,32 @@ def add_user_cluster_features_with_validation(
             df[f"cluster_{k}"] = (df["user_cluster"] == k).astype(int)
 
     return train, valid, test
+
+
+def cap_price_usd(train_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Caps price_usd at the 99th percentile to avoid infeasible prices.
+    Computes cap from training data to avoid leakage
+
+    Params:
+        train_df (pd.DataFrame): the training pandas dataframe.
+        test_df (pd.DataFrame): the test pandas dataframe.
+    Returns:
+        train_df (pd.DataFrame): training dataframe with capped price_usd.
+        test_df (pd.DataFrame): test dataframe with capped price_usd.
+    """
+    # compute cap from training data only
+    p99 = train_df['price_usd'].quantile(0.99)
+    print(f"price_usd 99th percentile cap: {p99:.2f}")
+    print(f"Rows capped in train: {(train_df['price_usd'] > p99).sum()}")
+    print(f"Rows capped in test: {(test_df['price_usd'] > p99).sum()}")
+
+    # add flag before capping
+    train_df['price_usd_was_capped'] = (train_df['price_usd'] > p99).astype(int)
+    test_df['price_usd_was_capped'] = (test_df['price_usd'] > p99).astype(int)
+
+    # cap price_usd
+    train_df['price_usd'] = train_df['price_usd'].clip(upper=p99)
+    test_df['price_usd'] = test_df['price_usd'].clip(upper=p99)
+
+    return train_df, test_df

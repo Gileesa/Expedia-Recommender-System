@@ -175,3 +175,4 @@ def print_outliers(col='price_usd'):
 # plot_histograms()
 # test
 print_outliers()
+print_nan_percentage()
