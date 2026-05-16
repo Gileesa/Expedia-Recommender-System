@@ -9,7 +9,7 @@ from pandas import Series
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
 from collaborativefiltering import run_svd_pipeline
-from other_features import add_search_relative_features, add_basic_features, only_train_test_add_user_cluster_features, cap_price_usd
+from other_features import add_search_relative_features, add_basic_features, only_train_test_add_user_cluster_features, cap_price_usd, aggregate_competitor_rates
 import matplotlib.pyplot as plt
 import lightgbm as lgb
 
@@ -39,6 +39,10 @@ train_full, test_fold = cap_price_usd(train_full, test_fold)
 
 # add cluster features; probably contains leakage so not actually used currently
 train_full, test_fold = only_train_test_add_user_cluster_features(train_full, test_fold)
+
+# aggregation of competitor data
+train_full = aggregate_competitor_rates(train_full)
+test_fold = aggregate_competitor_rates(test_fold)
 
 # collaborative filtering
 # train_full, test_fold = run_svd_pipeline(train_full, test_fold, 20)
@@ -145,6 +149,14 @@ features = [
     # 'svd_feature_11', 'svd_feature_12', 'svd_feature_13', 'svd_feature_14',
     # 'svd_feature_15', 'svd_feature_16', 'svd_feature_17', 'svd_feature_18',
     # 'svd_feature_19'
+
+    'comp_n_available',
+    'comp_n_cheaper',
+    'comp_n_more_expensive', 
+    'comp_n_same',
+    'comp_rate_mean',
+    'comp_expedia_wins',
+    'comp_win_rate'
 ]
 
 
@@ -196,4 +208,4 @@ print(f"NaNs in submission: {submission.isna().sum().sum()}")
 print(submission.head(10))
 
 # save to csv
-submission.to_csv('submission/group154_submission11.csv', index=False)
+submission.to_csv('submission/group154_submission12.csv', index=False)

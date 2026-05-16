@@ -8,7 +8,7 @@ from pandas import Series
 from xgboost import XGBRanker
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
-from other_features import add_search_relative_features, add_basic_features, add_user_cluster_features_with_validation, cap_price_usd
+from other_features import add_search_relative_features, add_basic_features, add_user_cluster_features_with_validation, cap_price_usd, aggregate_competitor_rates
 from collaborativefiltering import run_svd_pipeline
 import matplotlib.pyplot as plt
 import lightgbm as lgb
@@ -64,8 +64,9 @@ print("feature engineering")
 # feature engineer test set
 _, test_fold = extract_hotel_performance_test(train_df, test_df)
 
-train_fold, test_fold = cap_price_usd(train_fold, test_fold)
-_, valid_fold = cap_price_usd(train_fold, valid_fold)
+# cap prices
+# train_fold, test_fold = cap_price_usd(train_fold, test_fold)
+# _, valid_fold = cap_price_usd(train_fold, valid_fold)
 
 # Add basic features
 train_fold = add_basic_features(train_fold)
@@ -76,6 +77,11 @@ test_fold = add_basic_features(test_fold)
 train_fold = add_search_relative_features(train_fold)
 valid_fold = add_search_relative_features(valid_fold)
 test_fold = add_search_relative_features(test_fold)
+
+# aggregation of competitor data
+train_fold = aggregate_competitor_rates(train_fold)
+valid_fold = aggregate_competitor_rates(valid_fold)
+test_fold = aggregate_competitor_rates(test_fold)
 
 # add cluster features
 train_fold, valid_fold, test_fold = add_user_cluster_features_with_validation(train_fold, valid_fold, test_fold)
@@ -184,6 +190,14 @@ features = [
     # 'svd_feature_11', 'svd_feature_12', 'svd_feature_13', 'svd_feature_14',
     # 'svd_feature_15', 'svd_feature_16', 'svd_feature_17', 'svd_feature_18',
     # 'svd_feature_19'
+
+    'comp_n_available',
+    'comp_n_cheaper',
+    'comp_n_more_expensive', 
+    'comp_n_same',
+    'comp_rate_mean',
+    'comp_expedia_wins',
+    'comp_win_rate'
 ]
 
 train_fold = train_fold.sort_values('srch_id')
@@ -216,7 +230,7 @@ model = lgb.LGBMRanker(
     reg_alpha=2.1154524133678e-08,
     reg_lambda=8.5361883492890,
     min_gain_to_split=1.1183043724395,
-    random_state=42,
+    random_state=41,
     verbosity=-1
 )
 
