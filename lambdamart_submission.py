@@ -85,8 +85,8 @@ features = [
     'prop_country_id',
 
     # user history
-    'visitor_hist_starrating',
-    'visitor_hist_adr_usd',
+    # 'visitor_hist_starrating',
+    # 'visitor_hist_adr_usd',
     'visitor_location_country_id',
 
     # search/hotel match
@@ -94,8 +94,8 @@ features = [
     'orig_destination_distance',
 
     # competitor data
-    'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
-    'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
+    # 'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
+    # 'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
 
     # for debiasing
     'random_bool',
@@ -112,25 +112,25 @@ features = [
     'prop_review_score_zscore',
 
     # add_basic_features
-    'search_month',
-    'search_day',
-    'search_hour',
-    'total_people',
-    'is_family',
-    'is_solo',
-    'is_couple',
-    'is_group',
-    'people_per_room',
-    'is_long_stay',
-    'is_last_minute',
-    'is_planned',
+    # 'search_month',
+    # 'search_day',
+    # 'search_hour',
+    # 'total_people',
+    # 'is_family',
+    # 'is_solo',
+    # 'is_couple',
+    # 'is_group',
+    # 'people_per_room',
+    # 'is_long_stay',
+    # 'is_last_minute',
+    # 'is_planned',
     'log_booking_win',
     'log_length_stay',
     # 'has_hist_star',
     # 'has_hist_price',
-    'is_high_end_user',
+    # 'is_high_end_user',
     'star_pref_delta',
-    'price_pref_delta',
+    # 'price_pref_delta',
     'same_country',
     'log_price',
     'quality_score',
@@ -151,18 +151,23 @@ features = [
 X_train_full = train_full[features]
 y_train_full = train_full['relevance']
 
-# note: no eval_set since we have no validation set anymore
+# Final model from optuna
 model_final = lgb.LGBMRanker(
     objective='lambdarank',
     metric='ndcg',
     ndcg_eval_at=[5],
-    learning_rate=0.05,
-    max_depth=6,
-    n_estimators=500,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    # early_stopping_rounds=50,
-    random_state=42
+    learning_rate=0.0969410006535,
+    max_depth=5,
+    num_leaves=67,
+    n_estimators=442,
+    subsample=0.5075968415137,
+    colsample_bytree=0.8668745025134,
+    min_child_samples=30,
+    reg_alpha=2.1154524133678e-08,
+    reg_lambda=8.5361883492890,
+    min_gain_to_split=1.1183043724395,
+    random_state=42,
+    verbosity=-1
 )
 
 model_final.fit(
@@ -191,4 +196,4 @@ print(f"NaNs in submission: {submission.isna().sum().sum()}")
 print(submission.head(10))
 
 # save to csv
-submission.to_csv('submission/group154_submission9.csv', index=False)
+submission.to_csv('submission/group154_submission11.csv', index=False)

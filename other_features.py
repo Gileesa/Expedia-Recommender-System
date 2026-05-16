@@ -48,6 +48,14 @@ def add_search_relative_features(df: pd.DataFrame) -> pd.DataFrame:
     # if 'position' in df.columns:
     #     df['log_position'] = np.log1p(df['position'])
 
+    # zscore/diff columns: null happens when all hotels in search have same value
+    # (std=0), fill with 0 meaning no difference from mean
+    zscore_cols = [
+        'prop_starrating_zscore', 'prop_review_score_zscore',
+        'prop_review_score_diff', 'price_usd_zscore'
+    ]
+    df[zscore_cols] = df[zscore_cols].fillna(0)
+
     return df
 
 

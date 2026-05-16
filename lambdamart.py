@@ -15,6 +15,8 @@ import lightgbm as lgb
 
 TESTING_MODE = False
 
+print("starting...")
+
 # DEBUG
 raw_test = pd.read_csv('test_set_VU_DM.csv', low_memory=False)
 
@@ -58,6 +60,7 @@ _, valid_fold = extract_hotel_performance_test(
 )
 
 
+print("feature engineering")
 # feature engineer test set
 _, test_fold = extract_hotel_performance_test(train_df, test_df)
 
@@ -121,8 +124,8 @@ features = [
     'prop_country_id',
 
     # user history
-    'visitor_hist_starrating',
-    'visitor_hist_adr_usd',
+    # 'visitor_hist_starrating',
+    # 'visitor_hist_adr_usd',
     'visitor_location_country_id',
 
     # search/hotel match
@@ -130,8 +133,8 @@ features = [
     'orig_destination_distance',
 
     # competitor data
-    'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
-    'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
+    # 'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
+    # 'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
 
     # for debiasing
     'random_bool',
@@ -148,25 +151,25 @@ features = [
     'prop_review_score_zscore',
 
     # add_basic_features
-    'search_month',
-    'search_day',
-    'search_hour',
-    'total_people',
-    'is_family',
-    'is_solo',
-    'is_couple',
-    'is_group',
-    'people_per_room',
-    'is_long_stay',
-    'is_last_minute',
-    'is_planned',
+    # 'search_month',
+    # 'search_day',
+    # 'search_hour',
+    # 'total_people',
+    # 'is_family',
+    # 'is_solo',
+    # 'is_couple',
+    # 'is_group',
+    # 'people_per_room',
+    # 'is_long_stay',
+    # 'is_last_minute',
+    # 'is_planned',
     'log_booking_win',
     'log_length_stay',
     # 'has_hist_star',
     # 'has_hist_price',
-    'is_high_end_user',
+    # 'is_high_end_user',
     'star_pref_delta',
-    'price_pref_delta',
+    # 'price_pref_delta',
     'same_country',
     'log_price',
     'quality_score',
@@ -198,21 +201,26 @@ X_valid = valid_fold[features]
 y_valid = valid_fold['relevance']
 
 # training the lambda
+# Final model from optuna
 model = lgb.LGBMRanker(
     objective='lambdarank',
     metric='ndcg',
     ndcg_eval_at=[5],
-    learning_rate=0.02,
-    max_depth=-1,        # no limit
-    num_leaves=127,       # more = more complex model
-    n_estimators=1000,  # added more
-    subsample=0.8,
-    colsample_bytree=0.8,
-    min_child_samples=20,
+    learning_rate=0.0969410006535,
+    max_depth=5,
+    num_leaves=67,
+    n_estimators=442,
+    subsample=0.5075968415137,
+    colsample_bytree=0.8668745025134,
+    min_child_samples=30,
+    reg_alpha=2.1154524133678e-08,
+    reg_lambda=8.5361883492890,
+    min_gain_to_split=1.1183043724395,
     random_state=42,
+    verbosity=-1
 )
 
-
+print("training model")
 # fit model
 model.fit(
     X_train,
@@ -259,6 +267,28 @@ importance = pd.Series(
     index=features
 ).sort_values(ascending=False)
 
+print(importance)
+
+print("==== DEBUG ======")
+print(f"Number of trees: {model.n_iter_}")
+print(f"X_train shape: {X_train.shape}")
+print(f"X_train all zeros: {(X_train == 0).all().all()}")
+print(f"X_train NaN count: {X_train.isna().sum().sum()}")
+print(f"Features in model: {len(features)}")
+print(f"Columns in X_train: {X_train.shape[1]}")
+print('===== NANS ========')
+nan_by_feature = X_train.isna().sum().sort_values(ascending=False)
+print(nan_by_feature[nan_by_feature > 0])
+
+# only remove features with exactly zero importance
+zero_importance = importance[importance == 0].index.tolist()
+print('===== ZERO IMPORTANCE: =====', features)
+
+print('===== NEW IMPORTANCE =====')
+importance = pd.Series(
+    model.booster_.feature_importance(importance_type='gain'),
+    index=features
+).sort_values(ascending=False)
 print(importance)
 
 importance.plot(kind='bar', figsize=(12, 5), title='Feature Importances')
