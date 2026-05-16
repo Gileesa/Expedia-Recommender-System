@@ -54,6 +54,7 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     Returns:
         - train_df (pd.DataFrame): the train dataframe with new features.
         - hotel_performance (pd.DataFrame): the dataframe containing hotel profiles built from training data.
+        - dest_performance (pd.DataFrame): the dataframe containing smoothed destination info
     """
 
     # Get global stats
@@ -76,7 +77,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     ).reset_index()
 
     # merge into training set
-    rows_before = len(train_df)
     train_df = train_df.merge(
         dest_search,
         on=['srch_destination_id', 'srch_id'],
@@ -84,7 +84,6 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     )
 
     # also merge total in training set
-    rows_before = len(train_df)
     train_df = train_df.merge(
         dest_stats,
         on='srch_destination_id',
@@ -142,14 +141,12 @@ def extract_hotel_performance_train(train_df: pd.DataFrame) -> tuple[pd.DataFram
     ).reset_index()
 
     # merge into training df
-    rows_before = len(train_df)
     train_df = train_df.merge(
         hotel_search,
         on=['prop_id', 'srch_id'],
         how='left'
     )
 
-    rows_before = len(train_df)
     train_df = train_df.merge(
         hotel_total,
         on='prop_id',
