@@ -8,6 +8,7 @@ from pandas import Series
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test,  extract_hotel_revenue_features
 from collaborativefiltering import run_svd_pipeline
+from user import run_svd_pipeline_user
 from other_features import add_search_relative_features, add_basic_features, only_train_test_add_user_cluster_features, cap_price_usd, aggregate_competitor_rates
 import matplotlib.pyplot as plt
 import lightgbm as lgb
@@ -45,12 +46,13 @@ train_full = aggregate_competitor_rates(train_full)
 test_fold = aggregate_competitor_rates(test_fold)
 
 # SVD
-train_full, test_fold = run_svd_pipeline(
-    train_full,
-    test_fold,
-    n_components=20,
-    add_dot_product=True
-)
+# train_full, test_fold = run_svd_pipeline_user(
+#     train_full,
+#     test_fold,
+#     n_components=20,
+#     add_dot_product=True
+# )
+
 # adding relevance
 train_full['relevance'] = 0
 train_full.loc[train_full['click_bool'] == 1, 'relevance'] = 1
@@ -179,9 +181,8 @@ features = [
     'hotel_click_rate',
     'hotel_avg_position',
     'hotel_n_appearances',
-    'hotel_avg_gross_usd',
+    'hotel_avg_gross_usd', 
     'hotel_revenue_zscore',
-    # 'hotel_total_gross_usd'
 
     # search relative
     'price_pct_rank',
@@ -194,14 +195,16 @@ features = [
     'prop_review_score_diff',
     'prop_review_score_zscore',
 
-    # competitor (use_competitor: True)
-    'comp_n_available',
-    'comp_n_cheaper',
-    'comp_n_more_expensive',
-    'comp_n_same',
-    'comp_rate_mean',
-    'comp_expedia_wins',
-    'comp_win_rate',
+    # search context (use_search_context: True)
+    'srch_length_of_stay',
+    'srch_booking_window',
+    'srch_adults_count',
+    'srch_children_count',
+    'srch_room_count',
+    'srch_saturday_night_bool',
+    'log_booking_win',
+    'log_length_stay',
+    'random_bool',
 
     # user history (use_user_history: True)
     'visitor_location_country_id',
@@ -227,37 +230,33 @@ features = [
     'is_last_minute',
     'is_planned',
 
-    # svd features
-    'svd_dot_product',
-
-    # svd interaction
-
-    'svd_interact_0', 'svd_interact_1', 'svd_interact_2', 'svd_interact_3',
-    'svd_interact_4', 'svd_interact_5', 'svd_interact_6', 'svd_interact_7',
-    'svd_interact_8', 'svd_interact_9', 'svd_interact_10', 'svd_interact_11',
-    'svd_interact_12', 'svd_interact_13', 'svd_interact_14', 'svd_interact_15',
-    'svd_interact_16', 'svd_interact_17', 'svd_interact_18', 'svd_interact_19',
+    # competitor: ✗ — excluded
+    # svd_interactions: ✗ — excluded
 ]
 
 
-X_train_full = train_full[features]
+X_train_full = train_full[features].fillna(-999)
 y_train_full = train_full['relevance']
+
+print('=== LOWEST VALUES IN TRAIN ===')
+print(X_train_full.min().sort_values().head(10))
+print("=" * 50)
 
 # Final model from optuna
 model_final = lgb.LGBMRanker(
     objective='lambdarank',
     metric='ndcg',
     ndcg_eval_at=[5],
-    learning_rate=0.015361234354331139,
-    max_depth=7,
-    num_leaves=229,
-    n_estimators=1244,
-    subsample=0.8208868378919796,
-    colsample_bytree=0.6160492884083315,
-    min_child_samples=72,
-    reg_alpha=9.80921883242501e-06,
-    reg_lambda=0.6184965914240641,
-    min_gain_to_split=1.8791682372762821,
+    learning_rate=0.041992894862758805,
+    max_depth=6,
+    num_leaves=81,
+    n_estimators=994,
+    subsample=0.7705763154341787,
+    colsample_bytree=0.49001108575989627,
+    min_child_samples=90,
+    reg_alpha=2.0399056561707001e-07,
+    reg_lambda=0.3322116656056673,
+    min_gain_to_split=1.0698727809777333,
     random_state=42,
     verbosity=-1
 )
@@ -269,7 +268,7 @@ model_final.fit(
 )
 
 # predict on test
-X_test = test_fold[features]
+X_test = test_fold[features].fillna(-999)
 test_fold['prediction'] = model_final.predict(X_test)
 
 

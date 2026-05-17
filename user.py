@@ -130,7 +130,7 @@ def compute_dot_product_features(df: pd.DataFrame, n_components: int = 20) -> pd
     return df
 
 
-def run_svd_pipeline(train_df: pd.DataFrame, test_df: pd.DataFrame, 
+def run_svd_pipeline_user(train_df: pd.DataFrame, test_df: pd.DataFrame, 
                      n_components: int = 20, 
                      add_dot_product: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
