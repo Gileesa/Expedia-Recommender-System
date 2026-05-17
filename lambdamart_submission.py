@@ -24,8 +24,10 @@ assert 'gross_bookings_usd' in train_df.columns
 
 # train on full training data
 train_full, _, _ = extract_hotel_performance_train(train_df)
-_, test_fold = extract_hotel_performance_test(train_df, test_df)
-train_full, test_fold = extract_hotel_revenue_features(train_full, test_fold)
+
+# 1. First, compute revenue features using the raw test_df
+train_full, test_fold = extract_hotel_revenue_features(train_full, test_df)
+_, test_fold = extract_hotel_performance_test(train_df, test_fold)
 
 # cap price
 train_full, test_fold = cap_price_usd(train_full, test_fold)
