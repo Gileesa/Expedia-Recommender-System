@@ -180,7 +180,7 @@ features = [
     'hotel_avg_position',
     'hotel_n_appearances',
     'hotel_avg_gross_usd',
-    # 'hotel_revenue_zscore',
+    'hotel_revenue_zscore',
     # 'hotel_total_gross_usd'
 
     # search relative
@@ -288,4 +288,4 @@ print(f"NaNs in submission: {submission.isna().sum().sum()}")
 print(submission.head(10))
 
 # save to csv
-submission.to_csv('submission/group154_submission13.csv', index=False)
+submission.to_csv('submission/group154_submission14B.csv', index=False)

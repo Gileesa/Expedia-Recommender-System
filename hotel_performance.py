@@ -403,6 +403,7 @@ def extract_hotel_revenue_features(
     Creates:
     - hotel_avg_gross_usd
     - hotel_total_gross_usd
+    - hotel_revenue_zscore
 
     Applies leave-one-search-out for training data.
     """
@@ -471,7 +472,6 @@ def extract_hotel_revenue_features(
 
     train_df['hotel_total_gross_usd'] = loo_revenue
 
-
     # destination revenue statistics
     dest_revenue_stats = booked.groupby('srch_destination_id').agg(
         dest_avg_revenue=('gross_bookings_usd', 'mean'),
@@ -483,6 +483,16 @@ def extract_hotel_revenue_features(
         on='srch_destination_id',
         how='left'
     )
+
+    # z-score feature with LOO
+    # NOTE ONLY LOOKED AT ACTUALLY BOOKED HOTELS SO NOT ALL HOTELS IN THE SEARCH
+    train_df['hotel_revenue_zscore'] = (
+        (
+            train_df['hotel_avg_gross_usd']
+            - train_df['dest_avg_revenue']
+        )
+        / (train_df['dest_std_revenue'] + 1e-6) # no division by zero
+    ).clip(-5, 5) # prevent extreme outliers
 
     train_df = train_df.drop(columns=[
         'dest_avg_revenue',
@@ -543,18 +553,20 @@ def extract_hotel_revenue_features(
 
     # z-score feature
     # NOTE ONLY LOOKED AT ACTUALLY BOOKED HOTELS SO NOT ALL HOTELS IN THE SEARCH
-    # hotel_revenue_profile['hotel_revenue_zscore'] = (
-    #     (
-    #         hotel_revenue_profile['hotel_avg_gross_usd']
-    #         - hotel_revenue_profile['dest_avg_revenue']
-    #     )
-    #     / (hotel_revenue_profile['dest_std_revenue'] + 1e-6) # no division by zero
-    # ).clip(-5, 5) # prevent extreme outliers
+    hotel_revenue_profile['hotel_revenue_zscore'] = (
+        (
+            hotel_revenue_profile['hotel_avg_gross_usd']
+            - hotel_revenue_profile['dest_avg_revenue']
+        )
+        / (hotel_revenue_profile['dest_std_revenue'] + 1e-6) # no division by zero
+    ).clip(-5, 5) # prevent extreme outliers
 
     hotel_revenue_profile = hotel_revenue_profile.drop(columns=[
         'total_revenue',
         'total_bookings',
         'srch_destination_id',
+        'dest_avg_revenue',
+        'dest_std_revenue',
     ])
 
     # merge into test if provided
@@ -576,10 +588,10 @@ def extract_hotel_revenue_features(
             .fillna(0)
         )
 
-        # test_df['hotel_revenue_zscore'] = (
-        #     test_df['hotel_revenue_zscore']
-        #     .fillna(0)
-        # )
+        test_df['hotel_revenue_zscore'] = (
+            test_df['hotel_revenue_zscore']
+            .fillna(0)
+        )
 
         return train_df, test_df
 
