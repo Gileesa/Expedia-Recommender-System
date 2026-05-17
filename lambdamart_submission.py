@@ -9,7 +9,7 @@ from pandas import Series
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
 from collaborativefiltering import run_svd_pipeline
-from other_features import add_search_relative_features, add_basic_features, only_train_test_add_user_cluster_features, cap_price_usd
+from other_features import add_search_relative_features, add_basic_features, only_train_test_add_user_cluster_features, cap_price_usd, aggregate_competitor_rates
 import matplotlib.pyplot as plt
 import lightgbm as lgb
 
@@ -38,6 +38,10 @@ test_fold = add_search_relative_features(test_fold)
 train_full, test_fold = cap_price_usd(train_full, test_fold)
 
 train_full, test_fold = only_train_test_add_user_cluster_features(train_full, test_fold)
+
+# aggregation of competitor data
+train_full = aggregate_competitor_rates(train_full)
+test_fold = aggregate_competitor_rates(test_fold)
 
 # collaborative filtering
 train_full, test_fold = run_svd_pipeline(train_full, test_fold, 20, n_components=20, add_dot_product=True)
@@ -84,8 +88,8 @@ features = [
     'prop_country_id',
 
     # user history
-    'visitor_hist_starrating',
-    'visitor_hist_adr_usd',
+    # 'visitor_hist_starrating',
+    # 'visitor_hist_adr_usd',
     'visitor_location_country_id',
 
     # search/hotel match
@@ -93,8 +97,8 @@ features = [
     'orig_destination_distance',
 
     # competitor data
-    'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
-    'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
+    # 'comp1_rate', 'comp2_rate', 'comp3_rate', 'comp4_rate',
+    # 'comp5_rate', 'comp6_rate', 'comp7_rate', 'comp8_rate',
 
     # for debiasing
     'random_bool',
@@ -111,25 +115,25 @@ features = [
     'prop_review_score_zscore',
 
     # add_basic_features
-    'search_month',
-    'search_day',
-    'search_hour',
-    'total_people',
-    'is_family',
-    'is_solo',
-    'is_couple',
-    'is_group',
-    'people_per_room',
-    'is_long_stay',
-    'is_last_minute',
-    'is_planned',
+    # 'search_month',
+    # 'search_day',
+    # 'search_hour',
+    # 'total_people',
+    # 'is_family',
+    # 'is_solo',
+    # 'is_couple',
+    # 'is_group',
+    # 'people_per_room',
+    # 'is_long_stay',
+    # 'is_last_minute',
+    # 'is_planned',
     'log_booking_win',
     'log_length_stay',
     # 'has_hist_star',
     # 'has_hist_price',
-    'is_high_end_user',
+    # 'is_high_end_user',
     'star_pref_delta',
-    'price_pref_delta',
+    # 'price_pref_delta',
     'same_country',
     'log_price',
     'quality_score',
@@ -162,23 +166,36 @@ features = [
     'svd_interact_8', 'svd_interact_9', 'svd_interact_10', 'svd_interact_11',
     'svd_interact_12', 'svd_interact_13', 'svd_interact_14', 'svd_interact_15',
     'svd_interact_16', 'svd_interact_17', 'svd_interact_18', 'svd_interact_19',
+
+    'comp_n_available',
+    'comp_n_cheaper',
+    'comp_n_more_expensive', 
+    'comp_n_same',
+    'comp_rate_mean',
+    'comp_expedia_wins',
+    'comp_win_rate'
 ]
 
 X_train_full = train_full[features]
 y_train_full = train_full['relevance']
 
-# note: no eval_set since we have no validation set anymore
+# Final model from optuna
 model_final = lgb.LGBMRanker(
     objective='lambdarank',
     metric='ndcg',
     ndcg_eval_at=[5],
-    learning_rate=0.05,
-    max_depth=6,
-    n_estimators=500,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    # early_stopping_rounds=50,
-    random_state=42
+    learning_rate=0.0969410006535,
+    max_depth=5,
+    num_leaves=67,
+    n_estimators=442,
+    subsample=0.5075968415137,
+    colsample_bytree=0.8668745025134,
+    min_child_samples=30,
+    reg_alpha=2.1154524133678e-08,
+    reg_lambda=8.5361883492890,
+    min_gain_to_split=1.1183043724395,
+    random_state=42,
+    verbosity=-1
 )
 
 model_final.fit(
@@ -207,4 +224,4 @@ print(f"NaNs in submission: {submission.isna().sum().sum()}")
 print(submission.head(10))
 
 # save to csv
-submission.to_csv('submission/group154_submission8.csv', index=False)
+submission.to_csv('submission/group154_submission12.csv', index=False)
