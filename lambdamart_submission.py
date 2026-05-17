@@ -181,8 +181,9 @@ features = [
     'hotel_click_rate',
     'hotel_avg_position',
     'hotel_n_appearances',
-    'hotel_avg_gross_usd', 
+    'hotel_avg_gross_usd',
     'hotel_revenue_zscore',
+    # 'hotel_total_gross_usd'
 
     # search relative
     'price_pct_rank',
@@ -195,16 +196,14 @@ features = [
     'prop_review_score_diff',
     'prop_review_score_zscore',
 
-    # search context (use_search_context: True)
-    'srch_length_of_stay',
-    'srch_booking_window',
-    'srch_adults_count',
-    'srch_children_count',
-    'srch_room_count',
-    'srch_saturday_night_bool',
-    'log_booking_win',
-    'log_length_stay',
-    'random_bool',
+    # competitor (use_competitor: True)
+    'comp_n_available',
+    'comp_n_cheaper',
+    'comp_n_more_expensive',
+    'comp_n_same',
+    'comp_rate_mean',
+    'comp_expedia_wins',
+    'comp_win_rate',
 
     # user history (use_user_history: True)
     'visitor_location_country_id',
@@ -229,10 +228,8 @@ features = [
     'is_long_stay',
     'is_last_minute',
     'is_planned',
-
-    # competitor: ✗ — excluded
-    # svd_interactions: ✗ — excluded
 ]
+
 
 
 X_train_full = train_full[features].fillna(-999)
@@ -247,16 +244,16 @@ model_final = lgb.LGBMRanker(
     objective='lambdarank',
     metric='ndcg',
     ndcg_eval_at=[5],
-    learning_rate=0.041992894862758805,
-    max_depth=6,
-    num_leaves=81,
-    n_estimators=994,
-    subsample=0.7705763154341787,
-    colsample_bytree=0.49001108575989627,
-    min_child_samples=90,
-    reg_alpha=2.0399056561707001e-07,
-    reg_lambda=0.3322116656056673,
-    min_gain_to_split=1.0698727809777333,
+    learning_rate=0.015361234354331139,
+    max_depth=7,
+    num_leaves=229,
+    n_estimators=1244,
+    subsample=0.8208868378919796,
+    colsample_bytree=0.6160492884083315,
+    min_child_samples=72,
+    reg_alpha=9.80921883242501e-06,
+    reg_lambda=0.6184965914240641,
+    min_gain_to_split=1.8791682372762821,
     random_state=42,
     verbosity=-1
 )
@@ -287,4 +284,4 @@ print(f"NaNs in submission: {submission.isna().sum().sum()}")
 print(submission.head(10))
 
 # save to csv
-submission.to_csv('submission/group154_submission14B.csv', index=False)
+submission.to_csv('submission/group154_submission15.csv', index=False)
