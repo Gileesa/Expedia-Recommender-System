@@ -106,7 +106,7 @@ def compute_dot_product_features(df: pd.DataFrame, n_components: int = 20) -> pd
     This creates interaction features for LambdaMART.
     
     The dot product reconstructs the predicted relevance from the SVD model:
-    relevance = user_embedding \dotproduct hotel_embedding
+    relevance = user_embedding dotproduct hotel_embedding
     
     Args:
         df: DataFrame with both svd_user_* and svd_hotel_* columns
@@ -147,7 +147,7 @@ def run_svd_pipeline(train_df: pd.DataFrame, test_df: pd.DataFrame,
         (train_df_enriched, test_df_enriched) with SVD features
     """
     
-    print("Building interaction matrix from training data...")
+    print("Building interaction matrix from training data")
     interaction_matrix, srch_id_map, prop_id_map = create_interaction_matrix(train_df)
     
     print(f"Interaction matrix shape: {interaction_matrix.shape}")
@@ -186,7 +186,7 @@ def run_svd_pipeline(train_df: pd.DataFrame, test_df: pd.DataFrame,
         train_df = compute_dot_product_features(train_df, n_components)
         test_df = compute_dot_product_features(test_df, n_components)
     
-    print("\n✓ SVD Pipeline completed successfully!")
+    print("\n SVD Pipeline completed successfully!")
     print(f"Train shape: {train_df.shape}")
     print(f"Test shape: {test_df.shape}")
     
