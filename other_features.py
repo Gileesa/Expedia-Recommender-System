@@ -334,3 +334,42 @@ def cap_price_usd(train_df: pd.DataFrame, test_df: pd.DataFrame) -> tuple[pd.Dat
     test_df['price_usd'] = test_df['price_usd'].clip(upper=p99)
 
     return train_df, test_df
+
+def aggregate_competitor_rates(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Aggregates competitor rate columns (comp1_rate to comp8_rate) into
+    meaningful summary features, handling NaN values appropriately.
+
+    NaN means no competitive data available for that competitor.
+    Values are: +1 if Expedia is cheaper, 0 if same, -1 if Expedia is more expensive.
+
+    Args:
+        df (pd.DataFrame): input dataframe
+    Returns:
+        df (pd.DataFrame): dataframe with aggregated competitor features
+    """
+    comp_rate_cols = [f'comp{i}_rate' for i in range(1, 9)]
+
+    # number of competitors with data for this hotel/search
+    df['comp_n_available'] = df[comp_rate_cols].notna().sum(axis=1)
+
+    # number of competitors Expedia is cheaper than
+    df['comp_n_cheaper'] = (df[comp_rate_cols] == 1).sum(axis=1)
+
+    # number of competitors Expedia is more expensive than
+    df['comp_n_more_expensive'] = (df[comp_rate_cols] == -1).sum(axis=1)
+
+    # number of competitors have the same price
+    df['comp_n_same'] = (df[comp_rate_cols] == 0).sum(axis=1)
+
+    # net competitive advantage: positive means Expedia is cheaper overall
+    df['comp_rate_mean'] = df[comp_rate_cols].mean(axis=1)
+
+    # is Expedia cheaper than majority of competitors?
+    df['comp_expedia_wins'] = (df['comp_n_cheaper'] > df['comp_n_more_expensive']).astype(int)
+
+    # fraction of available competitors Expedia beats
+    df['comp_win_rate'] = df['comp_n_cheaper'] / df['comp_n_available'].replace(0, np.nan)
+    df['comp_win_rate'] = df['comp_win_rate'].fillna(0)
+
+    return df
