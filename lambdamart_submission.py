@@ -7,7 +7,7 @@ import pandas as pd
 from pandas import Series
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test,  extract_hotel_revenue_features
-from collaborativefiltering import run_svd_pipeline
+from user import run_svd_pipeline_user
 from other_features import add_search_relative_features, add_basic_features, only_train_test_add_user_cluster_features, cap_price_usd, aggregate_competitor_rates
 import matplotlib.pyplot as plt
 import lightgbm as lgb
@@ -45,7 +45,7 @@ train_full = aggregate_competitor_rates(train_full)
 test_fold = aggregate_competitor_rates(test_fold)
 
 # SVD
-train_full, test_fold = run_svd_pipeline(
+train_full, test_fold = run_svd_pipeline_user(
     train_full,
     test_fold,
     n_components=20,
