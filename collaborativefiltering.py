@@ -79,7 +79,7 @@ def get_svd_hotel_features(interaction_matrix: csr_matrix, prop_id_map: Dict[int
 
     return df_svd
 
-def run_svd_pipeline(train_df: pd.DataFrame, test_df: pd.DataFrame, n_components: int = 20) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def run_svd_pipeline(train_df: pd.DataFrame, test_df: pd.DataFrame, n_components: int = 20, validation:bool=False) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Runs the entire SVD pipeline: creates interaction matrix, extracts hotel features, 
     and merges them into both the train and test sets.
@@ -100,7 +100,8 @@ def run_svd_pipeline(train_df: pd.DataFrame, test_df: pd.DataFrame, n_components
     hotel_features_df = get_svd_hotel_features(interaction_matrix, prop_id_map, n_components)
     
     # Merge the SVD features into the training set
-    train_df = train_df.merge(hotel_features_df, on='prop_id', how='left')
+    if not validation:
+        train_df = train_df.merge(hotel_features_df, on='prop_id', how='left')
 
     #Merge the SVD features into the test set
     test_df = test_df.merge(hotel_features_df, on='prop_id', how='left')
