@@ -389,6 +389,201 @@ def validate_hotel_performance(train_df: pd.DataFrame, test_df: pd.DataFrame) ->
 
     print("\n ✓ All validation checks passed!")
 
+def extract_hotel_revenue_features(
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame | None = None,
+    C=30,
+    validation:bool = False
+):
+    """
+    Historical hotel revenue features using gross_booking_usd.
+
+    Uses only booked rows because only bookings have meaningful revenue.
+
+    Creates:
+    - hotel_avg_gross_usd
+    - hotel_total_gross_usd
+
+    Applies leave-one-search-out for training data.
+    """
+
+    assert 'gross_bookings_usd' in train_df.columns
+
+    # get booked hotels
+    booked = train_df[train_df['booking_bool'] == 1].copy()
+
+    # global stats
+    global_avg_revenue = booked['gross_bookings_usd'].mean()
+
+    # TRAIN FEATURES (LOO)
+    # get stats per hotel
+    hotel_total = booked.groupby('prop_id').agg(
+        total_revenue=('gross_bookings_usd', 'sum'),
+        total_bookings=('gross_bookings_usd', 'count')
+    ).reset_index()
+
+    # stats per search_id
+    hotel_search = booked.groupby(['prop_id', 'srch_id']).agg(
+        search_revenue=('gross_bookings_usd', 'sum'),
+        search_bookings=('gross_bookings_usd', 'count')
+    ).reset_index()
+
+    # merge total
+    train_df = train_df.merge(
+        hotel_total,
+        on='prop_id',
+        how='left'
+    )
+
+    # merge search
+    train_df = train_df.merge(
+        hotel_search,
+        on=['prop_id', 'srch_id'],
+        how='left'
+    )
+
+    # fill missing with zero
+    train_df[['search_revenue', 'search_bookings']] = (
+        train_df[['search_revenue', 'search_bookings']]
+        .fillna(0)
+    )
+
+    train_df[['total_revenue', 'total_bookings']] = (
+        train_df[['total_revenue', 'total_bookings']]
+        .fillna(0)
+    )
+
+    # perform LOO; remove search
+    loo_revenue = (
+        train_df['total_revenue']
+        - train_df['search_revenue']
+    )
+
+    loo_bookings = (
+        train_df['total_bookings']
+        - train_df['search_bookings']
+    )
+
+    # Bayesian smoothing towards global average
+    train_df['hotel_avg_gross_usd'] = (
+        loo_revenue + C * global_avg_revenue
+    ) / (loo_bookings + C)
+
+    train_df['hotel_total_gross_usd'] = loo_revenue
+
+
+    # destination revenue statistics
+    dest_revenue_stats = booked.groupby('srch_destination_id').agg(
+        dest_avg_revenue=('gross_bookings_usd', 'mean'),
+        dest_std_revenue=('gross_bookings_usd', 'std')
+    ).reset_index()
+    
+    train_df = train_df.merge(
+        dest_revenue_stats,
+        on='srch_destination_id',
+        how='left'
+    )
+
+    train_df = train_df.drop(columns=[
+        'dest_avg_revenue',
+        'dest_std_revenue'
+    ])
+
+    # cleanup, dropping useless columns
+    train_df = train_df.drop(columns=[
+        'total_revenue',
+        'total_bookings',
+        'search_revenue',
+        'search_bookings',
+    ])
+
+    # TEST FEATURES; no LOO
+    hotel_revenue_profile = booked.groupby('prop_id').agg(
+        total_revenue=('gross_bookings_usd', 'sum'),
+        total_bookings=('gross_bookings_usd', 'count')
+    ).reset_index()
+
+    # smoothed
+    hotel_revenue_profile['hotel_avg_gross_usd'] = (
+        hotel_revenue_profile['total_revenue']
+        + C * global_avg_revenue
+    ) / (
+        hotel_revenue_profile['total_bookings']
+        + C
+    )
+
+    hotel_revenue_profile['hotel_total_gross_usd'] = (
+        hotel_revenue_profile['total_revenue']
+    )
+
+    # associate hotels with their most common destination
+    hotel_destination = booked.groupby('prop_id')['srch_destination_id'].agg(
+        lambda x: x.mode()[0]
+    ).reset_index()
+
+    # merge destinations into hotel profile
+    hotel_revenue_profile = hotel_revenue_profile.merge(
+        hotel_destination,
+        on='prop_id',
+        how='left'
+    )
+
+    # destination revenue statistics
+    dest_revenue_stats = booked.groupby('srch_destination_id').agg(
+        dest_avg_revenue=('gross_bookings_usd', 'mean'),
+        dest_std_revenue=('gross_bookings_usd', 'std')
+    ).reset_index()
+
+    # merge destination revenue stats
+    hotel_revenue_profile = hotel_revenue_profile.merge(
+        dest_revenue_stats,
+        on='srch_destination_id',
+        how='left'
+    )
+
+    # z-score feature
+    # NOTE ONLY LOOKED AT ACTUALLY BOOKED HOTELS SO NOT ALL HOTELS IN THE SEARCH
+    # hotel_revenue_profile['hotel_revenue_zscore'] = (
+    #     (
+    #         hotel_revenue_profile['hotel_avg_gross_usd']
+    #         - hotel_revenue_profile['dest_avg_revenue']
+    #     )
+    #     / (hotel_revenue_profile['dest_std_revenue'] + 1e-6) # no division by zero
+    # ).clip(-5, 5) # prevent extreme outliers
+
+    hotel_revenue_profile = hotel_revenue_profile.drop(columns=[
+        'total_revenue',
+        'total_bookings',
+        'srch_destination_id',
+    ])
+
+    # merge into test if provided
+    if test_df is not None:
+
+        test_df = test_df.merge(
+            hotel_revenue_profile,
+            on='prop_id',
+            how='left'
+        )
+
+        test_df['hotel_avg_gross_usd'] = (
+            test_df['hotel_avg_gross_usd']
+            .fillna(global_avg_revenue)
+        )
+
+        test_df['hotel_total_gross_usd'] = (
+            test_df['hotel_total_gross_usd']
+            .fillna(0)
+        )
+
+        # test_df['hotel_revenue_zscore'] = (
+        #     test_df['hotel_revenue_zscore']
+        #     .fillna(0)
+        # )
+
+        return train_df, test_df
+
+    return train_df, hotel_revenue_profile
 
 # train, test = extract_hotel_performance_test(train_df, test_df)
 
