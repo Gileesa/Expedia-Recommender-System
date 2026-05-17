@@ -37,11 +37,10 @@ test_fold = add_search_relative_features(test_fold)
 # cap price
 train_full, test_fold = cap_price_usd(train_full, test_fold)
 
-# add cluster features; probably contains leakage so not actually used currently
 train_full, test_fold = only_train_test_add_user_cluster_features(train_full, test_fold)
 
 # collaborative filtering
-# train_full, test_fold = run_svd_pipeline(train_full, test_fold, 20)
+train_full, test_fold = run_svd_pipeline(train_full, test_fold, 20, n_components=20, add_dot_product=True)
 
 # adding relevance
 train_full['relevance'] = 0
@@ -139,14 +138,31 @@ features = [
     # 'cluster_0', 'cluster_1', 'cluster_2',
     # 'cluster_3', 'cluster_4', 'cluster_5',
 
-    # 'svd_feature_0', 'svd_feature_1', 'svd_feature_2', 'svd_feature_3',
-    # 'svd_feature_4', 'svd_feature_5', 'svd_feature_6',
-    # 'svd_feature_7', 'svd_feature_8', 'svd_feature_9', 'svd_feature_10',
-    # 'svd_feature_11', 'svd_feature_12', 'svd_feature_13', 'svd_feature_14',
-    # 'svd_feature_15', 'svd_feature_16', 'svd_feature_17', 'svd_feature_18',
-    # 'svd_feature_19'
+    # SVD FEATURES
+    # User embeddings (what kind of hotel the search wants)
+    'svd_user_0', 'svd_user_1', 'svd_user_2', 'svd_user_3',
+    'svd_user_4', 'svd_user_5', 'svd_user_6', 'svd_user_7',
+    'svd_user_8', 'svd_user_9', 'svd_user_10', 'svd_user_11',
+    'svd_user_12', 'svd_user_13', 'svd_user_14', 'svd_user_15',
+    'svd_user_16', 'svd_user_17', 'svd_user_18', 'svd_user_19',
+    
+    # Hotel embeddings (what the hotel offers)
+    'svd_hotel_0', 'svd_hotel_1', 'svd_hotel_2', 'svd_hotel_3',
+    'svd_hotel_4', 'svd_hotel_5', 'svd_hotel_6', 'svd_hotel_7',
+    'svd_hotel_8', 'svd_hotel_9', 'svd_hotel_10', 'svd_hotel_11',
+    'svd_hotel_12', 'svd_hotel_13', 'svd_hotel_14', 'svd_hotel_15',
+    'svd_hotel_16', 'svd_hotel_17', 'svd_hotel_18', 'svd_hotel_19',
+    
+    # Dot product (predicted relevance from collaborative filtering)
+    'svd_dot_product',
+    
+    # Individual interactions (per-dimension products)
+    'svd_interact_0', 'svd_interact_1', 'svd_interact_2', 'svd_interact_3',
+    'svd_interact_4', 'svd_interact_5', 'svd_interact_6', 'svd_interact_7',
+    'svd_interact_8', 'svd_interact_9', 'svd_interact_10', 'svd_interact_11',
+    'svd_interact_12', 'svd_interact_13', 'svd_interact_14', 'svd_interact_15',
+    'svd_interact_16', 'svd_interact_17', 'svd_interact_18', 'svd_interact_19',
 ]
-
 
 X_train_full = train_full[features]
 y_train_full = train_full['relevance']
