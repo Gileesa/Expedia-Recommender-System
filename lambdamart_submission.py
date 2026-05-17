@@ -5,7 +5,6 @@
 
 import pandas as pd
 from pandas import Series
-# from xgboost import XGBRanker
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test,  extract_hotel_revenue_features
 from collaborativefiltering import run_svd_pipeline
@@ -45,9 +44,13 @@ train_full, test_fold = only_train_test_add_user_cluster_features(train_full, te
 train_full = aggregate_competitor_rates(train_full)
 test_fold = aggregate_competitor_rates(test_fold)
 
-# collaborative filtering
-train_full, test_fold = run_svd_pipeline(train_full, test_fold, 20, n_components=20, add_dot_product=True)
-
+# SVD
+train_full, test_fold = run_svd_pipeline(
+    train_full,
+    test_fold,
+    n_components=20,
+    add_dot_product=True
+)
 # adding relevance
 train_full['relevance'] = 0
 train_full.loc[train_full['click_bool'] == 1, 'relevance'] = 1
@@ -223,6 +226,17 @@ features = [
     'is_long_stay',
     'is_last_minute',
     'is_planned',
+
+    # svd features
+    'svd_dot_product',
+
+    # svd interaction
+
+    'svd_interact_0', 'svd_interact_1', 'svd_interact_2', 'svd_interact_3',
+    'svd_interact_4', 'svd_interact_5', 'svd_interact_6', 'svd_interact_7',
+    'svd_interact_8', 'svd_interact_9', 'svd_interact_10', 'svd_interact_11',
+    'svd_interact_12', 'svd_interact_13', 'svd_interact_14', 'svd_interact_15',
+    'svd_interact_16', 'svd_interact_17', 'svd_interact_18', 'svd_interact_19',
 ]
 
 
