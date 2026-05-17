@@ -8,12 +8,14 @@ from pandas import Series
 from xgboost import XGBRanker
 from sklearn.model_selection import GroupShuffleSplit
 from hotel_performance import extract_hotel_performance_train, extract_hotel_performance_test
-from other_features import add_search_relative_features, add_basic_features, add_user_cluster_features_with_validation, cap_price_usd
+from other_features import add_search_relative_features, add_basic_features, add_user_cluster_features_with_validation, cap_price_usd, aggregate_competitor_rates
 from collaborativefiltering import run_svd_pipeline
 import matplotlib.pyplot as plt
 import lightgbm as lgb
 
 TESTING_MODE = False
+
+print("starting...")
 
 # DEBUG
 raw_test = pd.read_csv('test_set_VU_DM.csv', low_memory=False)
@@ -58,11 +60,13 @@ _, valid_fold = extract_hotel_performance_test(
 )
 
 
+print("feature engineering")
 # feature engineer test set
 _, test_fold = extract_hotel_performance_test(train_df, test_df)
 
-train_fold, test_fold = cap_price_usd(train_fold, test_fold)
-_, valid_fold = cap_price_usd(train_fold, valid_fold)
+# cap prices
+# train_fold, test_fold = cap_price_usd(train_fold, test_fold)
+# _, valid_fold = cap_price_usd(train_fold, valid_fold)
 
 # Add basic features
 train_fold = add_basic_features(train_fold)
@@ -74,12 +78,17 @@ train_fold = add_search_relative_features(train_fold)
 valid_fold = add_search_relative_features(valid_fold)
 test_fold = add_search_relative_features(test_fold)
 
+# aggregation of competitor data
+train_fold = aggregate_competitor_rates(train_fold)
+valid_fold = aggregate_competitor_rates(valid_fold)
+test_fold = aggregate_competitor_rates(test_fold)
+
 # add cluster features
 train_fold, valid_fold, test_fold = add_user_cluster_features_with_validation(train_fold, valid_fold, test_fold)
 
 # collaborative filtering
 # train_fold, test_fold = run_svd_pipeline(train_fold, test_fold, 20)
-# _, valid_fold = run_svd_pipeline(train_fold, valid_fold, 20)
+# _, valid_fold = run_svd_pipeline(train_fold, valid_fold, 20, validation=True)
 
 # add relevance
 train_fold['relevance'] = 0
@@ -99,6 +108,8 @@ features = [
     'prop_review_score',
     'prop_location_score1',
     'prop_location_score2',
+
+    # HOTEL PERFORMANCE
     'hotel_booking_rate',
     'hotel_click_rate',
     'hotel_avg_position',
@@ -119,8 +130,8 @@ features = [
     'prop_country_id',
 
     # user history
-    'visitor_hist_starrating',
-    'visitor_hist_adr_usd',
+    # 'visitor_hist_starrating',
+    # 'visitor_hist_adr_usd',
     'visitor_location_country_id',
 
     # search/hotel match
@@ -146,15 +157,15 @@ features = [
     'prop_review_score_zscore',
 
     # add_basic_features
-    'search_month',
+    # 'search_month',
     # 'search_day',
-    'search_hour',
-    'total_people',
+    # 'search_hour',
+    # 'total_people',
     # 'is_family',
     # 'is_solo',
     # 'is_couple',
     # 'is_group',
-    'people_per_room',
+    # 'people_per_room',
     # 'is_long_stay',
     # 'is_last_minute',
     # 'is_planned',
@@ -164,7 +175,7 @@ features = [
     # 'has_hist_price',
     # 'is_high_end_user',
     'star_pref_delta',
-    'price_pref_delta',
+    # 'price_pref_delta',
     'same_country',
     'log_price',
     'quality_score',
@@ -172,6 +183,21 @@ features = [
     # add_user_cluster_features
     # 'cluster_0', 'cluster_1', 'cluster_2',
     # 'cluster_3', 'cluster_4', 'cluster_5',
+
+    # 'svd_feature_0', 'svd_feature_1', 'svd_feature_2', 'svd_feature_3',
+    # 'svd_feature_4', 'svd_feature_5', 'svd_feature_6',
+    # 'svd_feature_7', 'svd_feature_8', 'svd_feature_9', 'svd_feature_10',
+    # 'svd_feature_11', 'svd_feature_12', 'svd_feature_13', 'svd_feature_14',
+    # 'svd_feature_15', 'svd_feature_16', 'svd_feature_17', 'svd_feature_18',
+    # 'svd_feature_19'
+
+    'comp_n_available',
+    'comp_n_cheaper',
+    'comp_n_more_expensive', 
+    'comp_n_same',
+    'comp_rate_mean',
+    'comp_expedia_wins',
+    'comp_win_rate'
 ]
 
 train_fold = train_fold.sort_values('srch_id')
@@ -189,21 +215,26 @@ X_valid = valid_fold[features]
 y_valid = valid_fold['relevance']
 
 # training the lambda
+# Final model from optuna
 model = lgb.LGBMRanker(
     objective='lambdarank',
     metric='ndcg',
     ndcg_eval_at=[5],
-    learning_rate=0.02,
-    max_depth=-1,        # no limit
-    num_leaves=127,       # more = more complex model
-    n_estimators=1000,  # added more
-    subsample=0.8,
-    colsample_bytree=0.8,
-    min_child_samples=20,
-    random_state=42,
+    learning_rate=0.0969410006535,
+    max_depth=5,
+    num_leaves=67,
+    n_estimators=442,
+    subsample=0.5075968415137,
+    colsample_bytree=0.8668745025134,
+    min_child_samples=30,
+    reg_alpha=2.1154524133678e-08,
+    reg_lambda=8.5361883492890,
+    min_gain_to_split=1.1183043724395,
+    random_state=41,
+    verbosity=-1
 )
 
-
+print("training model")
 # fit model
 model.fit(
     X_train,
@@ -250,6 +281,28 @@ importance = pd.Series(
     index=features
 ).sort_values(ascending=False)
 
+print(importance)
+
+print("==== DEBUG ======")
+print(f"Number of trees: {model.n_iter_}")
+print(f"X_train shape: {X_train.shape}")
+print(f"X_train all zeros: {(X_train == 0).all().all()}")
+print(f"X_train NaN count: {X_train.isna().sum().sum()}")
+print(f"Features in model: {len(features)}")
+print(f"Columns in X_train: {X_train.shape[1]}")
+print('===== NANS ========')
+nan_by_feature = X_train.isna().sum().sort_values(ascending=False)
+print(nan_by_feature[nan_by_feature > 0])
+
+# only remove features with exactly zero importance
+zero_importance = importance[importance == 0].index.tolist()
+print('===== ZERO IMPORTANCE: =====', features)
+
+print('===== NEW IMPORTANCE =====')
+importance = pd.Series(
+    model.booster_.feature_importance(importance_type='gain'),
+    index=features
+).sort_values(ascending=False)
 print(importance)
 
 importance.plot(kind='bar', figsize=(12, 5), title='Feature Importances')
