@@ -107,7 +107,7 @@ def add_basic_features(df: pd.DataFrame) -> pd.DataFrame:
     df["has_promotion"]       = df["promotion_flag"].fillna(0).astype(int)
 
     # ── Expedia positioning signals ──────────────────────────
-    df["log_position"]        = np.log1p(df.get("position", 0))
+    #df["log_position"]        = np.log1p(df.get("position", 0))
     # position is only available in training; harmless NaN in test
 
     # ── Per-query relative ranks (competitive context) ───────
